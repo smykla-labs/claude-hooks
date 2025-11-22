@@ -197,6 +197,15 @@ func registerValidators(registry *validator.Registry, log logger.Logger) {
 			validator.FileExtensionIs(".md"),
 		),
 	)
+
+	registry.Register(
+		filevalidators.NewTerraformValidator(log),
+		validator.And(
+			validator.EventTypeIs(hook.PreToolUse),
+			validator.ToolTypeIn(hook.Write, hook.Edit),
+			validator.FileExtensionIs(".tf"),
+		),
+	)
 }
 
 func truncate(s string, maxLen int) string {
