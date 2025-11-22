@@ -498,6 +498,16 @@ See github.com/smykla-labs/claude-hooks/pull/123`
 		})
 
 		Context("when message has signoff", func() {
+			BeforeEach(func() {
+				// Set expected signoff for these tests
+				git.ExpectedSignoff = "Test User <test@example.com>"
+			})
+
+			AfterEach(func() {
+				// Reset to empty after tests
+				git.ExpectedSignoff = ""
+			})
+
 			It("should pass with correct signoff", func() {
 				message := `feat(api): add endpoint
 
