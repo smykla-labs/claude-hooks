@@ -12,6 +12,7 @@ const (
 	maxTitleLength       = 50
 	maxBodyLineLength    = 72
 	maxBodyLineTolerance = 77 // 72 + 5 tolerance
+	truncateErrorLineAt  = 60 // Truncate long lines in error messages for readability
 )
 
 // ExpectedSignoff can be set at build time using:
@@ -74,40 +75,21 @@ func (v *CommitValidator) validateMessage(message string) *validator.Result {
 	// Check conventional commit format
 	if !conventionalCommitRegex.MatchString(title) {
 		errors = append(errors, "❌ Title doesn't follow conventional commits format: type(scope): description")
-		errors = append(errors, fmt.Sprintf("   Valid types: %s", strings.Join(validTypes, ", ")))
+		errors = append(errors, "   Valid types: "+strings.Join(validTypes, ", "))
 		errors = append(errors, fmt.Sprintf("   Current title: '%s'", title))
 	}
 
 	// Check for feat/fix misuse with infrastructure scopes
-	if infraScopeMisuseRegex.MatchString(title) {
-		matches := infraScopeMisuseRegex.FindStringSubmatch(title)
-		if len(matches) >= 3 {
-			typeMatch := matches[1]   // feat or fix
-			scopeMatch := matches[2]  // ci, test, docs, or build
-			errors = append(errors, fmt.Sprintf("❌ Use '%s(...)' not '%s(%s)' for infrastructure changes", scopeMatch, typeMatch, scopeMatch))
-			errors = append(errors, "   feat/fix should only be used for user-facing changes")
-		}
-	}
+	infraErrors := v.checkInfraScopeMisuse(title)
+	errors = append(errors, infraErrors...)
 
 	// Validate body lines
 	bodyErrors := v.validateBodyLines(lines)
 	errors = append(errors, bodyErrors...)
 
 	// Check for PR references
-	if prReferenceRegex.MatchString(message) {
-		errors = append(errors, "❌ PR references found - remove '#' prefix or convert URLs to plain numbers")
-
-		// Show examples
-		if hashMatch := regexp.MustCompile(`#[0-9]+`).FindString(message); hashMatch != "" {
-			fix := strings.TrimPrefix(hashMatch, "#")
-			errors = append(errors, fmt.Sprintf("   Found: '%s' → Should be: '%s'", hashMatch, fix))
-		}
-
-		if urlMatch := regexp.MustCompile(`github\.com/.+/pull/[0-9]+`).FindString(message); urlMatch != "" {
-			prNum := regexp.MustCompile(`[0-9]+$`).FindString(urlMatch)
-			errors = append(errors, fmt.Sprintf("   Found: 'https://%s' → Should be: '%s'", urlMatch, prNum))
-		}
-	}
+	prErrors := v.checkPRReferences(message)
+	errors = append(errors, prErrors...)
 
 	// Check Signed-off-by trailer if present (only if ExpectedSignoff is set)
 	if ExpectedSignoff != "" && strings.Contains(message, "Signed-off-by:") {
@@ -119,11 +101,11 @@ func (v *CommitValidator) validateMessage(message string) *validator.Result {
 			}
 		}
 
-		expectedSignoffLine := fmt.Sprintf("Signed-off-by: %s", ExpectedSignoff)
+		expectedSignoffLine := "Signed-off-by: " + ExpectedSignoff
 		if signoffLine != expectedSignoffLine {
 			errors = append(errors, "❌ Wrong signoff identity")
-			errors = append(errors, fmt.Sprintf("   Found: %s", signoffLine))
-			errors = append(errors, fmt.Sprintf("   Expected: %s", expectedSignoffLine))
+			errors = append(errors, "   Found: "+signoffLine)
+			errors = append(errors, "   Expected: "+expectedSignoffLine)
 		}
 	}
 
@@ -170,13 +152,7 @@ func (v *CommitValidator) validateBodyLines(lines []string) []string {
 		if listItemRegex.MatchString(line) {
 			// Check if this is the first list item and there was no empty line before it
 			if !foundFirstList && !prevLineEmpty {
-				truncated := line
-				if len(line) > 60 {
-					truncated = line[:60] + "..."
-				}
-				errors = append(errors, fmt.Sprintf("❌ Missing empty line before first list item at line %d", lineNum+1))
-				errors = append(errors, "   List items must be preceded by an empty line")
-				errors = append(errors, fmt.Sprintf("   Line: '%s'", truncated))
+				errors = append(errors, v.formatListItemError(line, lineNum)...)
 			}
 			foundFirstList = true
 		}
@@ -191,15 +167,80 @@ func (v *CommitValidator) validateBodyLines(lines []string) []string {
 
 		// Allow up to 77 chars (72 + 5 tolerance)
 		if lineLen > maxBodyLineTolerance {
-			truncated := line
-			if len(line) > 60 {
-				truncated = line[:60] + "..."
-			}
-			errors = append(errors, fmt.Sprintf("❌ Line %d exceeds %d characters (%d chars, >5 over limit)", lineNum+1, maxBodyLineLength, lineLen))
-			errors = append(errors, fmt.Sprintf("   Line: '%s'", truncated))
+			errors = append(errors, v.formatLineLengthError(line, lineNum, lineLen)...)
 		}
 
 		prevLineEmpty = false
+	}
+
+	return errors
+}
+
+// formatListItemError formats error messages for list items missing empty line before
+func (v *CommitValidator) formatListItemError(line string, lineNum int) []string {
+	truncated := truncateLine(line)
+	return []string{
+		fmt.Sprintf("❌ Missing empty line before first list item at line %d", lineNum+1),
+		"   List items must be preceded by an empty line",
+		fmt.Sprintf("   Line: '%s'", truncated),
+	}
+}
+
+// formatLineLengthError formats error messages for lines exceeding length limit
+func (v *CommitValidator) formatLineLengthError(line string, lineNum, lineLen int) []string {
+	truncated := truncateLine(line)
+	return []string{
+		fmt.Sprintf("❌ Line %d exceeds %d characters (%d chars, >5 over limit)", lineNum+1, maxBodyLineLength, lineLen),
+		fmt.Sprintf("   Line: '%s'", truncated),
+	}
+}
+
+// truncateLine truncates a line for display in error messages
+func truncateLine(line string) string {
+	if len(line) > truncateErrorLineAt {
+		return line[:truncateErrorLineAt] + "..."
+	}
+	return line
+}
+
+// checkInfraScopeMisuse checks for feat/fix misuse with infrastructure scopes
+func (v *CommitValidator) checkInfraScopeMisuse(title string) []string {
+	if !infraScopeMisuseRegex.MatchString(title) {
+		return nil
+	}
+
+	matches := infraScopeMisuseRegex.FindStringSubmatch(title)
+	const minMatchGroups = 3 // Full match + type + scope groups
+	if len(matches) < minMatchGroups {
+		return nil
+	}
+
+	typeMatch := matches[1]  // feat or fix
+	scopeMatch := matches[2] // ci, test, docs, or build
+	return []string{
+		fmt.Sprintf("❌ Use '%s(...)' not '%s(%s)' for infrastructure changes", scopeMatch, typeMatch, scopeMatch),
+		"   feat/fix should only be used for user-facing changes",
+	}
+}
+
+// checkPRReferences checks for PR references in the message
+func (v *CommitValidator) checkPRReferences(message string) []string {
+	if !prReferenceRegex.MatchString(message) {
+		return nil
+	}
+
+	errors := []string{"❌ PR references found - remove '#' prefix or convert URLs to plain numbers"}
+
+	// Show examples for hash references
+	if hashMatch := regexp.MustCompile(`#[0-9]+`).FindString(message); hashMatch != "" {
+		fix := strings.TrimPrefix(hashMatch, "#")
+		errors = append(errors, fmt.Sprintf("   Found: '%s' → Should be: '%s'", hashMatch, fix))
+	}
+
+	// Show examples for URL references
+	if urlMatch := regexp.MustCompile(`github\.com/.+/pull/[0-9]+`).FindString(message); urlMatch != "" {
+		prNum := regexp.MustCompile(`[0-9]+$`).FindString(urlMatch)
+		errors = append(errors, fmt.Sprintf("   Found: 'https://%s' → Should be: '%s'", urlMatch, prNum))
 	}
 
 	return errors

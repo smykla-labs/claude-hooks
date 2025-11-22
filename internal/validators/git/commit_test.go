@@ -1,19 +1,19 @@
 package git_test
 
 import (
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
 	"github.com/smykla-labs/claude-hooks/internal/validators/git"
 	"github.com/smykla-labs/claude-hooks/pkg/hook"
 	"github.com/smykla-labs/claude-hooks/pkg/logger"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("CommitValidator", func() {
 	var (
-		validator  *git.CommitValidator
-		log        logger.Logger
-		mockGit    *git.MockGitRunner
+		validator *git.CommitValidator
+		log       logger.Logger
+		mockGit   *git.MockGitRunner
 	)
 
 	BeforeEach(func() {
@@ -31,7 +31,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -sS -a -m \"test message\"`,
+						Command: `git commit -sS -a -m "feat: add new feature"`,
 					},
 				}
 
@@ -44,7 +44,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -s -S -m \"test message\"`,
+						Command: `git commit -s -S -m "fix: resolve bug"`,
 					},
 				}
 
@@ -57,7 +57,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit --signoff --gpg-sign -m \"test message\"`,
+						Command: `git commit --signoff --gpg-sign -m "docs: update readme"`,
 					},
 				}
 
@@ -72,7 +72,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -S -m \"test message\"`,
+						Command: `git commit -S -m "feat: test message"`,
 					},
 				}
 
@@ -86,7 +86,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -s -m \"test message\"`,
+						Command: `git commit -s -m "feat: test message"`,
 					},
 				}
 
@@ -100,7 +100,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -m \"test message\"`,
+						Command: `git commit -m "feat: test message"`,
 					},
 				}
 
@@ -118,7 +118,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -sS -a -m \"feat(api): add new endpoint\"`,
+						Command: `git commit -sS -a -m "feat(api): add new endpoint"`,
 					},
 				}
 
@@ -131,9 +131,8 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "fix(auth): resolve login issue"`,
-				},
-					
+						Command: `git commit -sS -a -m "fix(auth): resolve login issue"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -145,9 +144,8 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "chore: update dependencies"`,
-				},
-					
+						Command: `git commit -sS -a -m "chore: update dependencies"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -159,9 +157,8 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "feat!: remove deprecated API"`,
-				},
-					
+						Command: `git commit -sS -a -m "feat!: remove deprecated API"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -191,9 +188,8 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "Add new feature"`,
-				},
-					
+						Command: `git commit -sS -a -m "Add new feature"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -206,9 +202,8 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "invalid(api): add endpoint"`,
-				},
-					
+						Command: `git commit -sS -a -m "invalid(api): add endpoint"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -223,9 +218,8 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "feat(ci): add new workflow"`,
-				},
-					
+						Command: `git commit -sS -a -m "feat(ci): add new workflow"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -238,9 +232,8 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "fix(test): update test helper"`,
-				},
-					
+						Command: `git commit -sS -a -m "fix(test): update test helper"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -253,9 +246,8 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "feat(docs): add new section"`,
-				},
-					
+						Command: `git commit -sS -a -m "feat(docs): add new section"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -268,9 +260,8 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "fix(build): update makefile"`,
-				},
-					
+						Command: `git commit -sS -a -m "fix(build): update makefile"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -283,9 +274,8 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "ci(workflow): add new step"`,
-				},
-					
+						Command: `git commit -sS -a -m "ci(workflow): add new step"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -304,9 +294,8 @@ seventy-two character limit for proper formatting.`
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "` + message + `"`,
-				},
-					
+						Command: `git commit -sS -a -m "` + message + `"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -322,9 +311,8 @@ Reference: https://github.com/smykla-labs/claude-hooks/pull/123/files#diff-abc12
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "` + message + `"`,
-				},
-					
+						Command: `git commit -sS -a -m "` + message + `"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -342,9 +330,8 @@ This is a line that definitely exceeds the seventy-two character limit and even 
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "` + message + `"`,
-				},
-					
+						Command: `git commit -sS -a -m "` + message + `"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -366,9 +353,8 @@ Changes:
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "` + message + `"`,
-				},
-					
+						Command: `git commit -sS -a -m "` + message + `"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -384,9 +370,8 @@ Changes:
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "` + message + `"`,
-				},
-					
+						Command: `git commit -sS -a -m "` + message + `"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -403,9 +388,8 @@ Changes:
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "` + message + `"`,
-				},
-					
+						Command: `git commit -sS -a -m "` + message + `"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -420,9 +404,8 @@ Changes:
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "fix(api): resolve issue #123"`,
-				},
-					
+						Command: `git commit -sS -a -m "fix(api): resolve issue #123"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -440,9 +423,8 @@ See github.com/smykla-labs/claude-hooks/pull/123`
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "` + message + `"`,
-				},
-					
+						Command: `git commit -sS -a -m "` + message + `"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -455,9 +437,8 @@ See github.com/smykla-labs/claude-hooks/pull/123`
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "fix(api): resolve issue 123"`,
-				},
-					
+						Command: `git commit -sS -a -m "fix(api): resolve issue 123"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -471,9 +452,8 @@ See github.com/smykla-labs/claude-hooks/pull/123`
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "feat(api): add endpoint\\n\\nGenerated by Claude"`,
-				},
-					
+						Command: `git commit -sS -a -m "feat(api): add endpoint\\n\\nGenerated by Claude"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -486,9 +466,8 @@ See github.com/smykla-labs/claude-hooks/pull/123`
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "feat(api): add claude integration"`,
-				},
-					
+						Command: `git commit -sS -a -m "feat(api): add claude integration"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -517,9 +496,8 @@ Signed-off-by: Test User <test@example.com>`
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "` + message + `"`,
-				},
-					
+						Command: `git commit -sS -a -m "` + message + `"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -535,9 +513,8 @@ Signed-off-by: Bart Smykla <wrong@example.com>`
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "` + message + `"`,
-				},
-					
+						Command: `git commit -sS -a -m "` + message + `"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -554,9 +531,8 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-					Command: `git commit -sS -a -m "` + message + `"`,
-				},
-					
+						Command: `git commit -sS -a -m "` + message + `"`,
+					},
 				}
 
 				result := validator.Validate(ctx)
@@ -574,7 +550,6 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				ToolInput: hook.ToolInput{
 					Command: `git commit -sS`,
 				},
-				
 			}
 
 			result := validator.Validate(ctx)
@@ -590,7 +565,6 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				ToolInput: hook.ToolInput{
 					Command: `echo hello`,
 				},
-				
 			}
 
 			result := validator.Validate(ctx)
@@ -604,7 +578,6 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				ToolInput: hook.ToolInput{
 					Command: `git status`,
 				},
-				
 			}
 
 			result := validator.Validate(ctx)
@@ -620,7 +593,6 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				ToolInput: hook.ToolInput{
 					Command: `git add file.txt && git commit -sS -a -m "feat: add file"`,
 				},
-				
 			}
 
 			result := validator.Validate(ctx)
@@ -634,7 +606,6 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				ToolInput: hook.ToolInput{
 					Command: `git add file.txt && git commit -sS -a -m "Add file"`,
 				},
-				
 			}
 
 			result := validator.Validate(ctx)
@@ -650,7 +621,6 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				ToolInput: hook.ToolInput{
 					Command: `git commit --amend -sS -m "feat: amend commit"`,
 				},
-				
 			}
 
 			result := validator.Validate(ctx)
@@ -664,7 +634,6 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				ToolInput: hook.ToolInput{
 					Command: `git commit --allow-empty -sS -m "chore: empty commit"`,
 				},
-				
 			}
 
 			result := validator.Validate(ctx)

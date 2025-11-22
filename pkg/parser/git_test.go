@@ -41,7 +41,8 @@ var _ = Describe("GitCommand", func() {
 				gitCmd, err := parser.ParseGitCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(gitCmd.Subcommand).To(Equal("commit"))
-				Expect(gitCmd.Flags).To(ContainElements("-sS", "-m"))
+				// Combined flags -sS are split into individual flags
+				Expect(gitCmd.Flags).To(ContainElements("-s", "-S", "-m"))
 				Expect(gitCmd.GetFlagValue("-m")).To(Equal("test message"))
 			})
 
@@ -204,7 +205,9 @@ var _ = Describe("GitCommand", func() {
 
 				gitCmd, err := parser.ParseGitCommand(cmd)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(gitCmd.HasFlag("-sS")).To(BeTrue())
+				// Combined flag -sS is split into individual flags
+				Expect(gitCmd.HasFlag("-s")).To(BeTrue())
+				Expect(gitCmd.HasFlag("-S")).To(BeTrue())
 				Expect(gitCmd.HasFlag("--no-verify")).To(BeTrue())
 				Expect(gitCmd.HasFlag("-m")).To(BeTrue())
 			})
