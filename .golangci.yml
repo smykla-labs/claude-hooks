@@ -6,115 +6,208 @@ linters:
     - errcheck       # Checks for unchecked errors
     - govet          # Reports suspicious constructs
     - staticcheck    # Static analysis checks
+    - ineffassign    # Detects ineffectual assignments
+    - unused         # Checks for unused constants, variables, functions and types
 
     # Security & Correctness
     - gosec          # Security issues
     - errorlint      # Error wrapping with %w
+    - bodyclose      # HTTP response body is closed
+    - rowserrcheck   # SQL rows.Err is checked
+    - sqlclosecheck  # SQL Close methods are called
 
     # Code Quality
     - gocyclo        # Cyclomatic complexity
     - goconst        # Repeated strings -> constants
     - unconvert      # Unnecessary conversions
+    - dupl           # Code clone detection
+    - gocognit       # Cognitive complexity
+    - nestif         # Deeply nested if statements
+    - cyclop         # Package cyclomatic complexity
 
     # Best Practices
     - gocritic       # Comprehensive set of checks
     - revive         # Drop-in replacement for golint
+    - godot          # Comments end in period
+    - prealloc       # Finds slice declarations that could be preallocated
+    - predeclared    # Finds code that shadows predeclared identifiers
+    - thelper        # Detects test helpers without t.Helper()
+    - tparallel      # Detects inappropriate usage of t.Parallel()
+    - nolintlint     # Reports ill-formed nolint directives
 
     # Documentation
     - misspell       # Misspelled English words
 
-    # Formatting
+    # Formatting & Style
     - whitespace     # Leading/trailing whitespace
 
-linters-settings:
-  cyclop:
-    max-complexity: 30
+    # Performance
+    - goprintffuncname # Printf-like function naming
 
-  funlen:
-    lines: 100
-    statements: 50
+    # Bugs & Correctness
+    - nilerr         # Finds code returning nil with non-nil error
+    - nilnil         # Checks nil is not returned with non-nil
+    - noctx          # Finds HTTP requests without context
+    - contextcheck   # Check context is passed correctly
+    - errname        # Checks error type names match conventions
+    - forcetypeassert # Finds forced type assertions
+    - makezero       # Finds make slice with non-zero length and append
+    - nakedret       # Finds naked returns in functions > X lines
+    - promlinter     # Check Prometheus metrics naming
+    - asasalint      # Check for pass []any as any in variadic funcs
+    - bidichk        # Checks for dangerous unicode character sequences
+    - copyloopvar    # Detects places where loop variables are copied
+    - dupword        # Checks for duplicate words in source code
+    - durationcheck  # Check for two durations multiplied together
+    - ginkgolinter   # Enforces Ginkgo/Gomega best practices
+    - intrange       # Use integer range in for loops (Go 1.22+)
+    - loggercheck    # Checks key-value pairs for common loggers
+    - mirror         # Reports wrong mirror patterns of bytes/strings
+    - mnd            # Magic number detection
+    - musttag        # Enforce field tags in (un)marshaled structs
+    - nosprintfhostport # Checks for misuse of Sprintf for URLs
+    - perfsprint     # Replace fmt.Sprintf with faster alternatives
+    - reassign       # Checks that package variables are not reassigned
+    - sloglint       # Ensure consistent code style when using log/slog
+    - tagalign       # Check that struct tags are well aligned
+    - unparam        # Reports unused function parameters
+    - usestdlibvars  # Detect possibility to use stdlib variables/constants
+    - wastedassign   # Finds wasted assignment statements
 
-  gocognit:
-    min-complexity: 20
-
-  gocyclo:
-    min-complexity: 30
-
-  goconst:
-    min-len: 2
-    min-occurrences: 3
-
-  dupl:
-    threshold: 100
-
-  revive:
-    enable-all-rules: false
+  exclusions:
     rules:
-      # Critical rules
-      - name: blank-imports
-      - name: context-keys-type
-      - name: time-equal
-      - name: time-naming
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: if-return
-      - name: increment-decrement
-      - name: var-declaration
+      # Exclude some linters from test files
+      - path: _test\.go
+        linters:
+          - gocyclo
+          - gocognit
+          - cyclop
+          - errcheck
+          - dupl
+          - gosec
+          - funlen
+          - goconst
+          - nestif
+          - bodyclose
+          - noctx
+          - thelper
+          - tparallel
+          - forcetypeassert
+          - godot
+          - wrapcheck
+          - mnd            # Magic numbers are fine in tests
+          - unparam        # Unused params are fine in test helpers
+          - wastedassign   # Test setup may have intentional waste
+          - ginkgolinter   # May conflict with test structure
 
-      # Disabled (too noisy or stylistic)
-      - name: package-comments
-        disabled: true
-      - name: dot-imports
-        disabled: true
-      - name: exported
-        disabled: true
-      - name: var-naming
-        disabled: true
-      - name: indent-error-flow
-        disabled: true
-      - name: context-as-argument
-        disabled: true
+      # Exclude dot-imports rule from test files (Ginkgo/Gomega convention)
+      - path: '_test\.go'
+        text: "should not use dot imports"
 
-  gocritic:
-    disabled-checks:
-      - ifElseChain
-      - commentFormatting
-      - badCall
+      # Exclude linters for test helpers
+      - path: internal/testing\.go
+        linters:
+          - errcheck
+          - gosec
+          - forcetypeassert
 
-  goimports:
-    local-prefixes: github.com/smykla-labs/claude-hooks
+  settings:
+    cyclop:
+      max-complexity: 30
 
-  godot:
-    scope: declarations
-    exclude:
-      - "^@"
-      - "^TODO"
-      - "^FIXME"
+    funlen:
+      lines: 100
+      statements: 50
 
-  errcheck:
-    check-type-assertions: true
-    check-blank: false
+    gocognit:
+      min-complexity: 20
 
-  staticcheck:
-    checks: ["all"]
+    gocyclo:
+      min-complexity: 30
+
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+
+    dupl:
+      threshold: 100
+
+    revive:
+      enable-all-rules: false
+      severity: warning
+      rules:
+        # Critical rules
+        - name: blank-imports
+        - name: context-keys-type
+        - name: time-equal
+        - name: time-naming
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: if-return
+        - name: increment-decrement
+        - name: var-declaration
+
+        # Disabled (too noisy or stylistic)
+        - name: package-comments
+          disabled: true
+        - name: exported
+          disabled: true
+        - name: var-naming
+          disabled: true
+        - name: indent-error-flow
+          disabled: true
+        - name: context-as-argument
+          disabled: true
+
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+        - commentFormatting
+        - badCall
+
+    godot:
+      scope: declarations
+      exclude:
+        - "^@"
+        - "^TODO"
+        - "^FIXME"
+
+    nakedret:
+      max-func-lines: 30
+
+    nestif:
+      min-complexity: 5
+
+    nolintlint:
+      allow-unused: false
+      require-explanation: true
+      require-specific: true
+
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+
+    staticcheck:
+      checks: ["all"]
+
+formatters:
+  enable:
+    - gofmt          # Standard Go formatter
+    - gofumpt        # Stricter gofmt
+    - goimports      # Organizes imports
+    - gci            # Controls import order
+
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/smykla-labs/claude-hooks
+
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/smykla-labs/claude-hooks)
 
 issues:
   max-same-issues: 50
-
-  exclude-rules:
-    # Exclude some linters from test files
-    - path: _test\.go
-      linters:
-        - gocyclo
-        - errcheck
-        - dupl
-        - gosec
-        - funlen
-        - goconst
-
-    # Exclude linters for test helpers
-    - path: internal/testing\.go
-      linters:
-        - errcheck
-        - gosec
