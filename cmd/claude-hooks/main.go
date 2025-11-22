@@ -168,6 +168,15 @@ func registerValidators(registry *validator.Registry, log logger.Logger) {
 			validator.CommandContains("git commit"),
 		),
 	)
+
+	registry.Register(
+		gitvalidators.NewPushValidator(log, nil), // nil uses RealGitRunner
+		validator.And(
+			validator.EventTypeIs(hook.PreToolUse),
+			validator.ToolTypeIs(hook.Bash),
+			validator.CommandContains("git push"),
+		),
+	)
 }
 
 func truncate(s string, maxLen int) string {

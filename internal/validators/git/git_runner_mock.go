@@ -7,6 +7,9 @@ type MockGitRunner struct {
 	ModifiedFiles  []string
 	UntrackedFiles []string
 	RepoRoot       string
+	Remotes        map[string]string
+	CurrentBranch  string
+	BranchRemotes  map[string]string
 	Err            error
 }
 
@@ -18,7 +21,15 @@ func NewMockGitRunner() *MockGitRunner {
 		ModifiedFiles:  []string{},
 		UntrackedFiles: []string{},
 		RepoRoot:       "/mock/repo",
-		Err:            nil,
+		Remotes: map[string]string{
+			"origin":   "git@github.com:user/repo.git",
+			"upstream": "git@github.com:org/repo.git",
+		},
+		CurrentBranch: "main",
+		BranchRemotes: map[string]string{
+			"main": "origin",
+		},
+		Err: nil,
 	}
 }
 
@@ -57,6 +68,53 @@ func (m *MockGitRunner) GetRepoRoot() (string, error) {
 		return "", m.Err
 	}
 	return m.RepoRoot, nil
+}
+
+// GetRemoteURL returns the URL for the given remote
+func (m *MockGitRunner) GetRemoteURL(remote string) (string, error) {
+	if m.Err != nil {
+		return "", m.Err
+	}
+	if url, ok := m.Remotes[remote]; ok {
+		return url, nil
+	}
+	return "", &MockError{Msg: "remote not found"}
+}
+
+// GetCurrentBranch returns the current branch name
+func (m *MockGitRunner) GetCurrentBranch() (string, error) {
+	if m.Err != nil {
+		return "", m.Err
+	}
+	return m.CurrentBranch, nil
+}
+
+// GetBranchRemote returns the tracking remote for the given branch
+func (m *MockGitRunner) GetBranchRemote(branch string) (string, error) {
+	if m.Err != nil {
+		return "", m.Err
+	}
+	if remote, ok := m.BranchRemotes[branch]; ok {
+		return remote, nil
+	}
+	return "", &MockError{Msg: "branch remote not found"}
+}
+
+// GetRemotes returns the list of all remotes with their URLs
+func (m *MockGitRunner) GetRemotes() (map[string]string, error) {
+	if m.Err != nil {
+		return nil, m.Err
+	}
+	return m.Remotes, nil
+}
+
+// MockError is a simple error type for testing
+type MockError struct {
+	Msg string
+}
+
+func (e *MockError) Error() string {
+	return e.Msg
 }
 
 // Ensure MockGitRunner implements GitRunner
