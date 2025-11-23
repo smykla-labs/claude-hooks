@@ -2,18 +2,17 @@ package file
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	execpkg "github.com/smykla-labs/claude-hooks/internal/exec"
 	"github.com/smykla-labs/claude-hooks/internal/validator"
 	"github.com/smykla-labs/claude-hooks/pkg/hook"
 	"github.com/smykla-labs/claude-hooks/pkg/logger"
@@ -59,12 +58,18 @@ type actionUse struct {
 // WorkflowValidator validates GitHub Actions workflow files
 type WorkflowValidator struct {
 	validator.BaseValidator
+	toolChecker execpkg.ToolChecker
+	runner      execpkg.CommandRunner
+	tempManager execpkg.TempFileManager
 }
 
 // NewWorkflowValidator creates a new WorkflowValidator
 func NewWorkflowValidator(log logger.Logger) *WorkflowValidator {
 	return &WorkflowValidator{
 		BaseValidator: *validator.NewBaseValidator("validate-github-workflow", log),
+		toolChecker:   execpkg.NewToolChecker(),
+		runner:        execpkg.NewCommandRunner(workflowTimeout),
+		tempManager:   execpkg.NewTempFileManager(),
 	}
 }
 
@@ -329,7 +334,7 @@ func (v *WorkflowValidator) hasExplanationComment(action actionUse) bool {
 // getLatestVersion queries GitHub API for the latest version of an action
 func (v *WorkflowValidator) getLatestVersion(actionName string) string {
 	// Check if gh CLI is available
-	if _, err := exec.LookPath("gh"); err != nil {
+	if !v.toolChecker.IsAvailable("gh") {
 		v.Logger().Debug("gh CLI not found, skipping version check")
 		return ""
 	}
@@ -338,13 +343,9 @@ func (v *WorkflowValidator) getLatestVersion(actionName string) string {
 	defer cancel()
 
 	// Try releases first
-	//nolint:gosec // actionName is from parsed workflow file, validated by YAML parser
-	cmd := exec.CommandContext(ctx, "gh", "api", fmt.Sprintf("repos/%s/releases/latest", actionName), "--jq", ".tag_name")
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
-
-	if err := cmd.Run(); err == nil {
-		version := strings.TrimSpace(stdout.String())
+	result, err := v.runner.Run(ctx, "gh", "api", fmt.Sprintf("repos/%s/releases/latest", actionName), "--jq", ".tag_name")
+	if err == nil {
+		version := strings.TrimSpace(result.Stdout)
 		if version != "" {
 			return version
 		}
@@ -354,12 +355,8 @@ func (v *WorkflowValidator) getLatestVersion(actionName string) string {
 	ctx, cancel = context.WithTimeout(context.Background(), ghAPITimeout)
 	defer cancel()
 
-	//nolint:gosec // actionName is from parsed workflow file, validated by YAML parser
-	cmd = exec.CommandContext(ctx, "gh", "api", fmt.Sprintf("repos/%s/tags", actionName))
-	stdout.Reset()
-	cmd.Stdout = &stdout
-
-	if err := cmd.Run(); err != nil {
+	result, err = v.runner.Run(ctx, "gh", "api", fmt.Sprintf("repos/%s/tags", actionName))
+	if err != nil {
 		return ""
 	}
 
@@ -367,7 +364,8 @@ func (v *WorkflowValidator) getLatestVersion(actionName string) string {
 	var tags []struct {
 		Name string `json:"name"`
 	}
-	if err := json.Unmarshal(stdout.Bytes(), &tags); err != nil {
+
+	if err := json.Unmarshal([]byte(result.Stdout), &tags); err != nil {
 		return ""
 	}
 
@@ -392,31 +390,28 @@ func (v *WorkflowValidator) isVersionLatest(current, latest string) bool {
 // runActionlint runs actionlint on the workflow content
 func (v *WorkflowValidator) runActionlint(content, originalPath string) []string {
 	// Check if actionlint is available
-	if _, err := exec.LookPath("actionlint"); err != nil {
+	if !v.toolChecker.IsAvailable("actionlint") {
 		v.Logger().Debug("actionlint not found in PATH, skipping")
 		return nil
 	}
 
 	// Create temp file for validation
-	tmpFile, err := v.createTempFile(content, originalPath)
+	ext := filepath.Ext(originalPath)
+	if ext == "" {
+		ext = ".yml"
+	}
+	tmpFile, cleanup, err := v.tempManager.Create("workflow-*"+ext, content)
 	if err != nil {
 		v.Logger().Debug("failed to create temp file for actionlint", "error", err)
 		return nil
 	}
-	defer v.cleanupTempFile(tmpFile)
+	defer cleanup()
 
 	ctx, cancel := context.WithTimeout(context.Background(), workflowTimeout)
 	defer cancel()
 
-	// Run actionlint with color disabled for clean output
-	//nolint:gosec // tmpFile is a temp file we created, not user input
-	cmd := exec.CommandContext(ctx, "actionlint", "-no-color", tmpFile)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err = cmd.Run()
-	output := strings.TrimSpace(stdout.String())
+	result, err := v.runner.Run(ctx, "actionlint", "-no-color", tmpFile)
+	output := strings.TrimSpace(result.Stdout)
 
 	if err != nil {
 		// actionlint returns non-zero on findings
@@ -426,7 +421,7 @@ func (v *WorkflowValidator) runActionlint(content, originalPath string) []string
 		}
 
 		// Check if it's a real error (not just findings)
-		errOutput := strings.TrimSpace(stderr.String())
+		errOutput := strings.TrimSpace(result.Stderr)
 		if errOutput != "" {
 			v.Logger().Debug("actionlint failed", "error", err, "stderr", errOutput)
 			return nil
@@ -437,40 +432,6 @@ func (v *WorkflowValidator) runActionlint(content, originalPath string) []string
 
 	// No findings
 	return nil
-}
-
-// createTempFile creates a temporary workflow file with the content
-func (v *WorkflowValidator) createTempFile(content, originalPath string) (string, error) {
-	// Use the same extension as the original file
-	ext := filepath.Ext(originalPath)
-	if ext == "" {
-		ext = ".yml"
-	}
-
-	tmpFile, err := os.CreateTemp("", "workflow-*"+ext)
-	if err != nil {
-		return "", fmt.Errorf("creating temp file: %w", err)
-	}
-
-	if _, err := tmpFile.WriteString(content); err != nil {
-		_ = tmpFile.Close()
-		_ = os.Remove(tmpFile.Name())
-		return "", fmt.Errorf("writing temp file: %w", err)
-	}
-
-	if err := tmpFile.Close(); err != nil {
-		_ = os.Remove(tmpFile.Name())
-		return "", fmt.Errorf("closing temp file: %w", err)
-	}
-
-	return tmpFile.Name(), nil
-}
-
-// cleanupTempFile removes the temporary file
-func (v *WorkflowValidator) cleanupTempFile(path string) {
-	if err := os.Remove(path); err != nil {
-		v.Logger().Debug("failed to remove temp file", "path", path, "error", err)
-	}
 }
 
 // parseActionlintOutput parses actionlint output into individual warnings
