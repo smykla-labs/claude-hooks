@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/smykla-labs/claude-hooks/internal/validators"
 	"github.com/smykla-labs/claude-hooks/internal/validator"
+	"github.com/smykla-labs/claude-hooks/internal/validators"
 )
 
 const (
@@ -98,9 +98,7 @@ func (v *CommitValidator) validateMessage(message string) *validator.Result {
 		if bodyStartIdx < len(lines) {
 			body := strings.Join(lines[bodyStartIdx:], "\n")
 			markdownResult := validators.AnalyzeMarkdown(body)
-			for _, warning := range markdownResult.Warnings {
-				errors = append(errors, warning)
-			}
+			errors = append(errors, markdownResult.Warnings...)
 		}
 	}
 

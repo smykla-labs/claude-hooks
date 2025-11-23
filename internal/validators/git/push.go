@@ -1,10 +1,10 @@
 package git
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 
+	"github.com/smykla-labs/claude-hooks/internal/templates"
 	"github.com/smykla-labs/claude-hooks/internal/validator"
 	"github.com/smykla-labs/claude-hooks/pkg/hook"
 	"github.com/smykla-labs/claude-hooks/pkg/logger"
@@ -137,7 +137,7 @@ func (v *PushValidator) validateRemoteExists(remote string) *validator.Result {
 		remotes, remoteErr := v.gitRunner.GetRemotes()
 		if remoteErr != nil {
 			return validator.Fail(
-				fmt.Sprintf("🚫 Git push validation failed:\n\n❌ Remote '%s' does not exist", remote),
+				"🚫 Git push validation failed:\n\n❌ Remote '" + remote + "' does not exist",
 			)
 		}
 
@@ -151,25 +151,24 @@ func (v *PushValidator) validateRemoteExists(remote string) *validator.Result {
 
 // formatRemoteNotFoundError formats the error message for a missing remote
 func (v *PushValidator) formatRemoteNotFoundError(remote string, remotes map[string]string) string {
-	var msg strings.Builder
-
-	msg.WriteString(fmt.Sprintf("❌ Remote '%s' does not exist\n\n", remote))
-	msg.WriteString("Available remotes:\n")
-
 	names := make([]string, 0, len(remotes))
 	for name := range remotes {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
-	for _, name := range names {
-		url := remotes[name]
-		msg.WriteString(fmt.Sprintf("  %s  %s\n", name, url))
+	remoteInfos := make([]templates.RemoteInfo, len(names))
+	for i, name := range names {
+		remoteInfos[i] = templates.RemoteInfo{
+			Name: name,
+			URL:  remotes[name],
+		}
 	}
 
-	msg.WriteString("\nUse 'git remote -v' to list all configured remotes.")
-
-	return msg.String()
+	return templates.MustExecute(templates.PushRemoteNotFoundTemplate, templates.PushRemoteNotFoundData{
+		Remote:  remote,
+		Remotes: remoteInfos,
+	})
 }
 
 // detectProjectType detects the project type based on the repo root path
@@ -198,14 +197,8 @@ func (v *PushValidator) validateProjectSpecificRules(projectType, remote string)
 // validateKongOrgPush validates Kong organization push rules
 func (v *PushValidator) validateKongOrgPush(remote string) *validator.Result {
 	if remote == "origin" {
-		return validator.Fail(
-			`🚫 Git push validation failed:
-
-❌ Kong org projects should push to 'upstream' remote (main repo)
-   Note: 'origin' is your fork, use 'upstream' for Kong repos
-
-Expected: git push upstream branch-name`,
-		)
+		message := templates.MustExecute(templates.PushKongOrgTemplate, nil)
+		return validator.Fail(message)
 	}
 
 	return validator.Pass()
@@ -214,11 +207,10 @@ Expected: git push upstream branch-name`,
 // validateKumaPush validates kumahq/kuma push rules
 func (v *PushValidator) validateKumaPush(remote string) *validator.Result {
 	if remote == "upstream" {
+		message := templates.MustExecute(templates.PushKumaWarningTemplate, nil)
 		return &validator.Result{
-			Passed: false,
-			Message: `⚠️  Warning: Pushing to 'upstream' remote in kumahq/kuma
-   This should only be done when explicitly intended
-   Normal workflow: push to 'origin' (your fork)`,
+			Passed:      false,
+			Message:     message,
 			ShouldBlock: false,
 		}
 	}

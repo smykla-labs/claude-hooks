@@ -162,18 +162,14 @@ func (v *ShellScriptValidator) runShellCheckOnFile(filePath string) *validator.R
 
 // formatShellCheckOutput formats shellcheck output for display.
 func (v *ShellScriptValidator) formatShellCheckOutput(output string) string {
-	var msg strings.Builder
-	msg.WriteString("Shellcheck validation failed\n\n")
-
-	// Clean up the output
+	// Clean up the output - remove empty lines
 	lines := strings.Split(output, "\n")
+	var cleanLines []string
 	for _, line := range lines {
 		if strings.TrimSpace(line) != "" {
-			msg.WriteString(line)
-			msg.WriteString("\n")
+			cleanLines = append(cleanLines, line)
 		}
 	}
 
-	msg.WriteString("\nFix these issues before committing.")
-	return msg.String()
+	return "Shellcheck validation failed\n\n" + strings.Join(cleanLines, "\n") + "\n\nFix these issues before committing."
 }

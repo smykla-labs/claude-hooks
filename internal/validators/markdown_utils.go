@@ -148,7 +148,7 @@ func checkMultipleEmptyLinesBeforeCodeBlock(prevLine, prevPrevLine string, lineN
 	if lineNum > 3 && isEmptyLine(prevLine) && isEmptyLine(prevPrevLine) {
 		*warnings = append(*warnings,
 			fmt.Sprintf("⚠️  Line %d: Code block should have only one empty line before it, not multiple", lineNum),
-			fmt.Sprintf("   Found multiple consecutive empty lines before code block"),
+			"   Found multiple consecutive empty lines before code block",
 		)
 	}
 }

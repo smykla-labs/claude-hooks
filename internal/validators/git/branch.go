@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/smykla-labs/claude-hooks/internal/templates"
 	"github.com/smykla-labs/claude-hooks/internal/validator"
 	"github.com/smykla-labs/claude-hooks/pkg/hook"
 	"github.com/smykla-labs/claude-hooks/pkg/logger"
@@ -136,11 +137,8 @@ func (v *BranchValidator) validateBranch(gitCmd *parser.GitCommand) *validator.R
 
 // createSpaceError creates an error for branch names with spaces.
 func (v *BranchValidator) createSpaceError() *validator.Result {
-	var msg strings.Builder
-	msg.WriteString("Branch name appears to contain spaces\n\n")
-	msg.WriteString("Branch names cannot contain spaces. Use hyphens instead.\n\n")
-	msg.WriteString("Example: feat/my-feature not feat/my feature")
-	return validator.Fail(msg.String())
+	message := templates.MustExecute(templates.BranchSpaceErrorTemplate, nil)
+	return validator.Fail(message)
 }
 
 // extractBranchName extracts the branch name from a git command.
@@ -203,32 +201,28 @@ func (v *BranchValidator) validateBranchName(branchName string) *validator.Resul
 
 	// Check for uppercase characters.
 	if branchName != strings.ToLower(branchName) {
-		var msg strings.Builder
-		msg.WriteString("Branch name must be lowercase\n\n")
-		fmt.Fprintf(&msg, "Branch name '%s' contains uppercase characters\n\n", branchName)
-		fmt.Fprintf(&msg, "Use: %s", strings.ToLower(branchName))
-		return validator.Fail(msg.String())
+		message := templates.MustExecute(templates.BranchUppercaseTemplate, templates.BranchUppercaseData{
+			BranchName:  branchName,
+			LowerBranch: strings.ToLower(branchName),
+		})
+		return validator.Fail(message)
 	}
 
 	// Check format: type/description.
 	if !branchNamePattern.MatchString(branchName) {
-		var msg strings.Builder
-		msg.WriteString("Branch name must follow type/description format\n\n")
-		fmt.Fprintf(&msg, "Branch name '%s' doesn't match pattern\n\n", branchName)
-		msg.WriteString("Expected format: <type>/<description>\n")
-		msg.WriteString("Valid types: feat, fix, docs, style, refactor, test, chore, ci, build, perf\n\n")
-		msg.WriteString("Example: feat/add-user-auth or fix/login-bug-123")
-		return validator.Fail(msg.String())
+		message := templates.MustExecute(templates.BranchPatternTemplate, templates.BranchPatternData{
+			BranchName: branchName,
+		})
+		return validator.Fail(message)
 	}
 
 	// Extract and validate type.
 	parts := strings.SplitN(branchName, "/", minBranchParts)
 	if len(parts) != minBranchParts {
-		var msg strings.Builder
-		msg.WriteString("Branch name must contain type and description\n\n")
-		fmt.Fprintf(&msg, "Branch name '%s' is missing type or description\n\n", branchName)
-		msg.WriteString("Expected format: <type>/<description>")
-		return validator.Fail(msg.String())
+		message := templates.MustExecute(templates.BranchMissingPartsTemplate, templates.BranchMissingPartsData{
+			BranchName: branchName,
+		})
+		return validator.Fail(message)
 	}
 
 	branchType := parts[0]
@@ -238,11 +232,11 @@ func (v *BranchValidator) validateBranchName(branchName string) *validator.Resul
 			validTypes = append(validTypes, t)
 		}
 
-		var msg strings.Builder
-		msg.WriteString("Invalid branch type\n\n")
-		fmt.Fprintf(&msg, "Branch type '%s' is not valid\n\n", branchType)
-		fmt.Fprintf(&msg, "Valid types: %s", strings.Join(validTypes, ", "))
-		return validator.Fail(msg.String())
+		message := templates.MustExecute(templates.BranchInvalidTypeTemplate, templates.BranchInvalidTypeData{
+			BranchType:    branchType,
+			ValidTypesStr: strings.Join(validTypes, ", "),
+		})
+		return validator.Fail(message)
 	}
 
 	return validator.Pass()

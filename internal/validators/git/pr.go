@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/smykla-labs/claude-hooks/internal/validators"
 	"github.com/smykla-labs/claude-hooks/internal/validator"
+	"github.com/smykla-labs/claude-hooks/internal/validators"
 	"github.com/smykla-labs/claude-hooks/pkg/hook"
 	"github.com/smykla-labs/claude-hooks/pkg/logger"
 	"github.com/smykla-labs/claude-hooks/pkg/parser"
@@ -180,9 +180,7 @@ func (v *PRValidator) validatePR(data PRData) *validator.Result {
 
 		// Internal markdown validation (code block indentation, empty lines, etc.)
 		internalMdResult := validators.AnalyzeMarkdown(data.Body)
-		for _, warning := range internalMdResult.Warnings {
-			allErrors = append(allErrors, warning)
-		}
+		allErrors = append(allErrors, internalMdResult.Warnings...)
 	}
 
 	// 5. Validate base branch labels

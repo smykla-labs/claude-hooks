@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/smykla-labs/claude-hooks/internal/templates"
 	"github.com/smykla-labs/claude-hooks/internal/validator"
 	"github.com/smykla-labs/claude-hooks/pkg/hook"
 	"github.com/smykla-labs/claude-hooks/pkg/logger"
@@ -97,14 +98,13 @@ func (v *CommitValidator) checkFlags(gitCmd *parser.GitCommand) *validator.Resul
 	hasGPGSign := gitCmd.HasFlag("-S") || gitCmd.HasFlag("--gpg-sign")
 
 	if !hasSignoff || !hasGPGSign {
-		var details strings.Builder
-		details.WriteString("Git commit must use -sS flags (signoff + GPG sign)\n\n")
-		fmt.Fprintf(&details, "Current command: git commit %s\n", strings.Join(gitCmd.Args, " "))
-		details.WriteString("Expected: git commit -sS -m \"message\"")
+		message := templates.MustExecute(templates.GitCommitFlagsTemplate, templates.GitCommitFlagsData{
+			ArgsStr: strings.Join(gitCmd.Args, " "),
+		})
 
 		return validator.Fail(
 			"Git commit must use -sS flags",
-		).AddDetail("help", details.String())
+		).AddDetail("help", message)
 	}
 
 	return validator.Pass()
@@ -136,19 +136,14 @@ func (v *CommitValidator) checkStagingArea(gitCmd *parser.GitCommand) *validator
 		// No files staged, get status info
 		modifiedCount, untrackedCount := v.getStatusCounts()
 
-		var details strings.Builder
-		details.WriteString("No files staged for commit and no -a/-A flag specified\n\n")
-		details.WriteString("Current status:\n")
-		fmt.Fprintf(&details, "  Modified files (not staged): %d\n", modifiedCount)
-		fmt.Fprintf(&details, "  Untracked files: %d\n", untrackedCount)
-		details.WriteString("  Staged files: 0\n\n")
-		details.WriteString("Did you forget to:\n")
-		details.WriteString("  • Stage files? Run 'git add <files>' or 'git add .'\n")
-		details.WriteString("  • Use -a flag? Run 'git commit -a' to commit all modified files")
+		message := templates.MustExecute(templates.GitCommitNoStagedTemplate, templates.GitCommitNoStagedData{
+			ModifiedCount:  modifiedCount,
+			UntrackedCount: untrackedCount,
+		})
 
 		return validator.Fail(
 			"No files staged for commit",
-		).AddDetail("help", details.String())
+		).AddDetail("help", message)
 	}
 
 	return validator.Pass()

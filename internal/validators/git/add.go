@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/smykla-labs/claude-hooks/internal/templates"
 	"github.com/smykla-labs/claude-hooks/internal/validator"
 	"github.com/smykla-labs/claude-hooks/pkg/hook"
 	"github.com/smykla-labs/claude-hooks/pkg/logger"
@@ -85,20 +86,13 @@ func (v *AddValidator) Validate(ctx *hook.Context) *validator.Result {
 
 	// Report errors if tmp/ files found
 	if len(tmpFiles) > 0 {
-		var details strings.Builder
-		details.WriteString("Files in tmp/ should be in .gitignore or .git/info/exclude\n\n")
-		details.WriteString("Files being added:\n")
-
-		for _, file := range tmpFiles {
-			fmt.Fprintf(&details, "  - %s\n", file)
-		}
-
-		details.WriteString("\nAdd tmp/ to .git/info/exclude:\n")
-		details.WriteString("  echo 'tmp/' >> .git/info/exclude")
+		message := templates.MustExecute(templates.GitAddTmpFilesTemplate, templates.GitAddTmpFilesData{
+			Files: tmpFiles,
+		})
 
 		return validator.Fail(
 			"Attempting to add files from tmp/ directory",
-		).AddDetail("help", details.String())
+		).AddDetail("help", message)
 	}
 
 	log.Debug("Git add validation passed")
