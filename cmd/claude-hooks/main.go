@@ -154,6 +154,15 @@ func registerValidators(registry *validator.Registry, log logger.Logger) {
 	)
 
 	registry.Register(
+		gitvalidators.NewNoVerifyValidator(log),
+		validator.And(
+			validator.EventTypeIs(hook.PreToolUse),
+			validator.ToolTypeIs(hook.Bash),
+			validator.CommandContains("git commit"),
+		),
+	)
+
+	registry.Register(
 		gitvalidators.NewCommitValidator(log, nil), // nil uses RealGitRunner
 		validator.And(
 			validator.EventTypeIs(hook.PreToolUse),

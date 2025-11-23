@@ -86,6 +86,14 @@ Expected: git push upstream branch-name`)
 	PushKumaWarningTemplate = Parse("push_kuma_warning", `⚠️  Warning: Pushing to 'upstream' remote in kumahq/kuma
    This should only be done when explicitly intended
    Normal workflow: push to 'origin' (your fork)`)
+
+	// GitNoVerifyTemplate formats error for --no-verify flag usage
+	GitNoVerifyTemplate = Parse("git_no_verify", `Git commit --no-verify is not allowed
+
+The --no-verify flag bypasses pre-commit hooks and validation.
+All commits must go through proper validation.
+
+Use: git commit -sS -m "message"`)
 )
 
 // GitAddTmpFilesData holds data for GitAddTmpFilesTemplate
