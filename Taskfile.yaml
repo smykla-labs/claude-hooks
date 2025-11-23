@@ -58,14 +58,34 @@ tasks:
       - mise exec -- go test -v -race -cover -run Integration ./...
 
   lint:
-    desc: Run linters
+    desc: Run linters on all files
     cmds:
       - mise exec -- golangci-lint run
 
   lint:fix:
-    desc: Run linters with auto-fix
+    desc: Run linters with auto-fix on all files
     cmds:
       - mise exec -- golangci-lint run --fix
+
+  lint:staged:
+    desc: Run linters on modified and staged files only
+    vars:
+      STAGED_FILES:
+        sh: git diff --cached --name-only --diff-filter=ACM | grep '\.go$' || true
+      MODIFIED_FILES:
+        sh: git diff --name-only --diff-filter=ACM | grep '\.go$' || true
+      ALL_CHANGED_FILES:
+        sh: |
+          (git diff --cached --name-only --diff-filter=ACM; git diff --name-only --diff-filter=ACM) | \
+          grep '\.go$' | sort -u || true
+    cmds:
+      - |
+        if [ -n "{{.ALL_CHANGED_FILES}}" ]; then
+          echo "Linting changed files..."
+          mise exec -- golangci-lint run {{.ALL_CHANGED_FILES}}
+        else
+          echo "No Go files to lint"
+        fi
 
   check:
     desc: Alias for lint:fix
@@ -85,6 +105,19 @@ tasks:
       - mkdir -p ~/.claude/hooks
       - cp bin/{{.BINARY_NAME}} {{.INSTALL_PATH}}
       - chmod +x {{.INSTALL_PATH}}
+
+  install:hooks:
+    desc: Install git pre-commit hook
+    cmds:
+      - |
+        if [ ! -d ".git" ]; then
+          echo "Error: Not a git repository"
+          exit 1
+        fi
+      - mkdir -p .git/hooks
+      - cp .githooks/pre-commit .git/hooks/pre-commit
+      - chmod +x .git/hooks/pre-commit
+      - echo "✓ Pre-commit hook installed to .git/hooks/pre-commit"
 
   clean:
     desc: Remove build artifacts
