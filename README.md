@@ -34,7 +34,7 @@ task install
 
 ### Configure Claude Code
 
-Update `~/.claude/settings.json` to use the dispatcher:
+After installation, update `~/.claude/settings.json` to use the `chook` command:
 
 ```json
 {
@@ -45,7 +45,7 @@ Update `~/.claude/settings.json` to use the dispatcher:
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/dispatcher --hook-type PreToolUse"
+            "command": "chook -T PreToolUse"
           }
         ]
       },
@@ -54,7 +54,7 @@ Update `~/.claude/settings.json` to use the dispatcher:
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/dispatcher --hook-type PreToolUse",
+            "command": "chook -T PreToolUse",
             "timeout": 30
           }
         ]
@@ -65,7 +65,7 @@ Update `~/.claude/settings.json` to use the dispatcher:
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/dispatcher --hook-type Notification"
+            "command": "chook -T Notification"
           }
         ]
       }
@@ -73,6 +73,8 @@ Update `~/.claude/settings.json` to use the dispatcher:
   }
 }
 ```
+
+**Note**: After installation, the binary is available as `chook` (installed to `~/.local/bin` or `~/bin`). Ensure the install directory is in your `$PATH`.
 
 **Important**: File validators use **PreToolUse** to block invalid writes **before** they happen, not PostToolUse which only validates after the file is written.
 
@@ -604,10 +606,10 @@ task build:prod
 
 ```bash
 # Debug mode (enabled by default)
-~/.claude/hooks/dispatcher --hook-type=preToolUse --debug
+chook -T preToolUse --debug
 
 # Trace mode (verbose logging)
-~/.claude/hooks/dispatcher --hook-type=preToolUse --trace
+chook -T preToolUse --trace
 ```
 
 ## Performance
