@@ -52,15 +52,16 @@ func AnalyzeMarkdown(content string) MarkdownAnalysisResult {
 		lineNum++
 
 		// Track list context for indentation validation
-		if isListItem(line) {
+		switch {
+		case isListItem(line):
 			lastList = &listContext{
 				lineNum:           lineNum,
 				indent:            getListIndent(line),
 				sawEmptyLineAfter: false,
 			}
-		} else if lastList != nil && isEmptyLine(line) {
+		case lastList != nil && isEmptyLine(line):
 			lastList.sawEmptyLineAfter = true
-		} else if lastList != nil && !isEmptyLine(line) && !isListItem(line) && !isCodeBlockMarker(line) {
+		case lastList != nil && !isEmptyLine(line) && !isListItem(line) && !isCodeBlockMarker(line):
 			// Reset list context if we encounter non-list, non-empty, non-code content
 			lastList = nil
 		}

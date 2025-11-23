@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -159,7 +158,7 @@ func (v *WorkflowValidator) getContent(ctx *hook.Context) (string, error) {
 	// For Edit operations in PreToolUse, we can't easily get final content
 	// Skip validation
 	if ctx.EventType == hook.PreToolUse && ctx.ToolName == hook.Edit {
-		return "", errors.New("cannot validate Edit operations in PreToolUse")
+		return "", errCannotValidateEdit
 	}
 
 	// Try to get from file path (Edit or PostToolUse)
@@ -174,7 +173,7 @@ func (v *WorkflowValidator) getContent(ctx *hook.Context) (string, error) {
 		return string(content), nil
 	}
 
-	return "", errors.New("no content found")
+	return "", errNoContent
 }
 
 // parseWorkflow parses workflow content and extracts all action uses

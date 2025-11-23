@@ -1,11 +1,11 @@
 package git
 
 import (
-	"bytes"
 	"context"
-	"os/exec"
 	"strings"
 	"time"
+
+	execpkg "github.com/smykla-labs/claude-hooks/internal/exec"
 )
 
 const (
@@ -28,26 +28,21 @@ func ValidatePRMarkdown(body string) PRMarkdownValidationResult {
 	}
 
 	// Check if markdownlint is available
-	ctx, cancel := context.WithTimeout(context.Background(), markdownlintTimeout)
-	defer cancel()
-
-	if _, err := exec.LookPath("markdownlint"); err != nil {
+	checker := execpkg.NewToolChecker()
+	if !checker.IsAvailable("markdownlint") {
 		// markdownlint not installed, skip validation
 		return result
 	}
 
 	// Run markdownlint with stdin input
-	cmd := exec.CommandContext(ctx, "markdownlint", "--stdin")
-	cmd.Stdin = strings.NewReader(body)
+	ctx, cancel := context.WithTimeout(context.Background(), markdownlintTimeout)
+	defer cancel()
 
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	_ = cmd.Run() // Ignore error, we check output instead
+	runner := execpkg.NewCommandRunner(markdownlintTimeout)
+	cmdResult, _ := runner.RunWithStdin(ctx, strings.NewReader(body), "markdownlint", "--stdin")
 
 	// Parse markdownlint output
-	output := stdout.String() + stderr.String()
+	output := cmdResult.Stdout + cmdResult.Stderr
 	if output == "" {
 		return result
 	}

@@ -63,13 +63,14 @@ func ParseGitCommand(cmd Command) (*GitCommand, error) {
 		}
 
 		// It's a flag - determine how to parse it
-		if strings.HasPrefix(arg, "--") {
+		switch {
+		case strings.HasPrefix(arg, "--"):
 			// Long flag: --message, --signoff, etc.
 			i = parseLongFlag(arg, cmd.Args, i, gitCmd)
-		} else if len(arg) == 2 { //nolint:mnd // Trivial check for single short flag format
+		case len(arg) == 2: //nolint:mnd // Trivial check for single short flag format
 			// Single short flag: -m, -s, etc.
 			i = parseShortFlag(arg, cmd.Args, i, gitCmd)
-		} else {
+		default:
 			// Combined short flags: -sS, -sSm, etc.
 			i = parseCombinedFlags(arg, cmd.Args, i, gitCmd)
 		}

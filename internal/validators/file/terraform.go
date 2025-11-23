@@ -2,7 +2,6 @@ package file
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -95,7 +94,7 @@ func (v *TerraformValidator) getContent(ctx *hook.Context) (string, error) {
 	// For Edit operations in PreToolUse, we can't easily get final content
 	// Skip validation
 	if ctx.EventType == hook.PreToolUse && ctx.ToolName == hook.Edit {
-		return "", errors.New("cannot validate Edit operations in PreToolUse")
+		return "", errCannotValidateEdit
 	}
 
 	// Try to get from file path (Edit or PostToolUse)
@@ -103,10 +102,10 @@ func (v *TerraformValidator) getContent(ctx *hook.Context) (string, error) {
 	if filePath != "" {
 		// In PostToolUse, we could read the file, but for now skip
 		// as the Bash version doesn't handle this case well either
-		return "", errors.New("file-based validation not implemented")
+		return "", errFileValidationNotImpl
 	}
 
-	return "", errors.New("no content found")
+	return "", errNoContent
 }
 
 // detectTool detects whether to use tofu or terraform

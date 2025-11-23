@@ -11,6 +11,12 @@ import (
 	"github.com/smykla-labs/claude-hooks/pkg/logger"
 )
 
+var (
+	errCannotValidateEdit    = errors.New("cannot validate Edit operations in PreToolUse")
+	errFileValidationNotImpl = errors.New("file-based validation not implemented")
+	errNoContent             = errors.New("no content found")
+)
+
 // MarkdownValidator validates Markdown formatting rules
 type MarkdownValidator struct {
 	validator.BaseValidator
@@ -59,7 +65,7 @@ func (v *MarkdownValidator) getContent(ctx *hook.Context) (string, error) {
 	// For Edit operations in PreToolUse, we can't easily get final content
 	// Skip validation
 	if ctx.EventType == hook.PreToolUse && ctx.ToolName == hook.Edit {
-		return "", errors.New("cannot validate Edit operations in PreToolUse")
+		return "", errCannotValidateEdit
 	}
 
 	// Try to get from file path (Edit or PostToolUse)
@@ -67,8 +73,8 @@ func (v *MarkdownValidator) getContent(ctx *hook.Context) (string, error) {
 	if filePath != "" {
 		// In PostToolUse, we could read the file, but for now skip
 		// as the Bash version doesn't handle this case well either
-		return "", errors.New("file-based validation not implemented")
+		return "", errFileValidationNotImpl
 	}
 
-	return "", errors.New("no content found")
+	return "", errNoContent
 }

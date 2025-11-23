@@ -3,6 +3,7 @@ package git
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -80,11 +81,5 @@ func ExtractPRType(title string) string {
 // (ci, test, chore, build, docs, style, refactor)
 func IsNonUserFacingType(prType string) bool {
 	nonUserFacingTypes := strings.Split(nonUserFacingTypesPattern, "|")
-	for _, t := range nonUserFacingTypes {
-		if prType == t {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(nonUserFacingTypes, prType)
 }
