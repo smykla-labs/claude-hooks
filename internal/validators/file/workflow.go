@@ -12,6 +12,7 @@ import (
 	"time"
 
 	execpkg "github.com/smykla-labs/claude-hooks/internal/exec"
+	"github.com/smykla-labs/claude-hooks/internal/linters"
 	"github.com/smykla-labs/claude-hooks/internal/validator"
 	"github.com/smykla-labs/claude-hooks/pkg/hook"
 	"github.com/smykla-labs/claude-hooks/pkg/logger"
@@ -59,18 +60,18 @@ type actionUse struct {
 // WorkflowValidator validates GitHub Actions workflow files
 type WorkflowValidator struct {
 	validator.BaseValidator
+	linter      linters.ActionLinter
 	toolChecker execpkg.ToolChecker
 	runner      execpkg.CommandRunner
-	tempManager execpkg.TempFileManager
 }
 
 // NewWorkflowValidator creates a new WorkflowValidator
-func NewWorkflowValidator(log logger.Logger) *WorkflowValidator {
+func NewWorkflowValidator(linter linters.ActionLinter, log logger.Logger) *WorkflowValidator {
 	return &WorkflowValidator{
 		BaseValidator: *validator.NewBaseValidator("validate-github-workflow", log),
+		linter:        linter,
 		toolChecker:   execpkg.NewToolChecker(),
-		runner:        execpkg.NewCommandRunner(workflowTimeout),
-		tempManager:   execpkg.NewTempFileManager(),
+		runner:        execpkg.NewCommandRunner(ghAPITimeout),
 	}
 }
 
@@ -440,52 +441,26 @@ func (v *WorkflowValidator) isVersionLatest(current, latest string) bool {
 	return current >= latest
 }
 
-// runActionlint runs actionlint on the workflow content
+// runActionlint runs actionlint on the workflow content using ActionLinter
 func (v *WorkflowValidator) runActionlint(content, originalPath string) []string {
-	// Check if actionlint is available
-	if !v.toolChecker.IsAvailable("actionlint") {
-		v.Logger().Debug("actionlint not found in PATH, skipping")
-		return nil
-	}
-
-	// Create temp file for validation
-	ext := filepath.Ext(originalPath)
-	if ext == "" {
-		ext = ".yml"
-	}
-
-	tmpFile, cleanup, err := v.tempManager.Create("workflow-*"+ext, content)
-	if err != nil {
-		v.Logger().Debug("failed to create temp file for actionlint", "error", err)
-		return nil
-	}
-
-	defer cleanup()
-
 	ctx, cancel := context.WithTimeout(context.Background(), workflowTimeout)
 	defer cancel()
 
-	result := v.runner.Run(ctx, "actionlint", "-no-color", tmpFile)
-	output := strings.TrimSpace(result.Stdout)
+	result := v.linter.Lint(ctx, content, originalPath)
 
-	if result.Err != nil {
-		// actionlint returns non-zero on findings
-		if output != "" {
-			// Parse output into individual warnings
-			return v.parseActionlintOutput(output)
-		}
-
-		// Check if it's a real error (not just findings)
-		errOutput := strings.TrimSpace(result.Stderr)
-		if errOutput != "" {
-			v.Logger().Debug("actionlint failed", "error", result.Err, "stderr", errOutput)
-			return nil
-		}
-
+	if result.Success {
 		return nil
 	}
 
-	// No findings
+	output := strings.TrimSpace(result.RawOut)
+	if output != "" {
+		return v.parseActionlintOutput(output)
+	}
+
+	if result.Err != nil {
+		v.Logger().Debug("actionlint failed", "error", result.Err)
+	}
+
 	return nil
 }
 

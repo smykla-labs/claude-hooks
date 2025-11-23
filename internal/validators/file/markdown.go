@@ -2,14 +2,21 @@
 package file
 
 import (
+	"context"
 	"errors"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/smykla-labs/claude-hooks/internal/linters"
 	"github.com/smykla-labs/claude-hooks/internal/validator"
-	"github.com/smykla-labs/claude-hooks/internal/validators"
 	"github.com/smykla-labs/claude-hooks/pkg/hook"
 	"github.com/smykla-labs/claude-hooks/pkg/logger"
+)
+
+const (
+	// markdownTimeout is the timeout for markdown linting
+	markdownTimeout = 10 * time.Second
 )
 
 var (
@@ -20,12 +27,14 @@ var (
 // MarkdownValidator validates Markdown formatting rules
 type MarkdownValidator struct {
 	validator.BaseValidator
+	linter linters.MarkdownLinter
 }
 
 // NewMarkdownValidator creates a new MarkdownValidator
-func NewMarkdownValidator(log logger.Logger) *MarkdownValidator {
+func NewMarkdownValidator(linter linters.MarkdownLinter, log logger.Logger) *MarkdownValidator {
 	return &MarkdownValidator{
 		BaseValidator: *validator.NewBaseValidator("validate-markdown", log),
+		linter:        linter,
 	}
 }
 
@@ -43,12 +52,15 @@ func (v *MarkdownValidator) Validate(ctx *hook.Context) *validator.Result {
 		return validator.Pass()
 	}
 
-	result := validators.AnalyzeMarkdown(content)
+	lintCtx, cancel := context.WithTimeout(context.Background(), markdownTimeout)
+	defer cancel()
 
-	if len(result.Warnings) > 0 {
+	result := v.linter.Lint(lintCtx, content)
+
+	if !result.Success {
 		message := "Markdown formatting errors"
 		details := map[string]string{
-			"errors": strings.Join(result.Warnings, "\n"),
+			"errors": strings.TrimSpace(result.RawOut),
 		}
 
 		return validator.FailWithDetails(message, details)

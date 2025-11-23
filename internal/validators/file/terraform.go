@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	execpkg "github.com/smykla-labs/claude-hooks/internal/exec"
+	"github.com/smykla-labs/claude-hooks/internal/linters"
 	"github.com/smykla-labs/claude-hooks/internal/validator"
 	"github.com/smykla-labs/claude-hooks/pkg/hook"
 	"github.com/smykla-labs/claude-hooks/pkg/logger"
@@ -22,17 +22,21 @@ const (
 // TerraformValidator validates Terraform/OpenTofu file formatting
 type TerraformValidator struct {
 	validator.BaseValidator
-	toolChecker execpkg.ToolChecker
-	runner      execpkg.CommandRunner
+	formatter   linters.TerraformFormatter
+	linter      linters.TfLinter
 	tempManager execpkg.TempFileManager
 }
 
 // NewTerraformValidator creates a new TerraformValidator
-func NewTerraformValidator(log logger.Logger) *TerraformValidator {
+func NewTerraformValidator(
+	formatter linters.TerraformFormatter,
+	linter linters.TfLinter,
+	log logger.Logger,
+) *TerraformValidator {
 	return &TerraformValidator{
 		BaseValidator: *validator.NewBaseValidator("validate-terraform", log),
-		toolChecker:   execpkg.NewToolChecker(),
-		runner:        execpkg.NewCommandRunner(terraformTimeout),
+		formatter:     formatter,
+		linter:        linter,
 		tempManager:   execpkg.NewTempFileManager(),
 	}
 }
@@ -52,10 +56,10 @@ func (v *TerraformValidator) Validate(ctx *hook.Context) *validator.Result {
 	}
 
 	// Detect which tool to use
-	tool := v.detectTool()
+	tool := v.formatter.DetectTool()
 	log.Debug("detected terraform tool", "tool", tool)
 
-	// Create temp file for validation
+	// Create temp file for tflint
 	tmpFile, cleanup, err := v.tempManager.Create("terraform-*.tf", content)
 	if err != nil {
 		log.Debug("failed to create temp file", "error", err)
@@ -66,7 +70,7 @@ func (v *TerraformValidator) Validate(ctx *hook.Context) *validator.Result {
 	var warnings []string
 
 	// Run format check
-	if fmtWarning := v.checkFormat(tool, tmpFile); fmtWarning != "" {
+	if fmtWarning := v.checkFormat(content, tool); fmtWarning != "" {
 		warnings = append(warnings, fmtWarning)
 	}
 
@@ -139,13 +143,8 @@ func (v *TerraformValidator) getContent(ctx *hook.Context) (string, error) {
 	return "", errNoContent
 }
 
-// detectTool detects whether to use tofu or terraform
-func (v *TerraformValidator) detectTool() string {
-	return v.toolChecker.FindTool("tofu", "terraform")
-}
-
-// checkFormat runs terraform/tofu fmt -check
-func (v *TerraformValidator) checkFormat(tool, filePath string) string {
+// checkFormat runs terraform/tofu fmt -check using TerraformFormatter
+func (v *TerraformValidator) checkFormat(content, tool string) string {
 	if tool == "" {
 		return "⚠️  Neither 'tofu' nor 'terraform' found in PATH - skipping format check"
 	}
@@ -153,58 +152,49 @@ func (v *TerraformValidator) checkFormat(tool, filePath string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), terraformTimeout)
 	defer cancel()
 
-	result := v.runner.Run(ctx, tool, "fmt", "-check", "-diff", filePath)
-	if result.Err == nil {
-		// Formatting is correct
+	result := v.formatter.CheckFormat(ctx, content)
+
+	if result.Success {
 		return ""
 	}
 
-	// Format check failed - terraform fmt returns exit 3 when formatting is needed
-	diff := result.Stdout
-	if diff == "" {
-		diff = result.Stderr
-	}
-
-	if strings.TrimSpace(diff) != "" {
+	// Format check failed
+	diff := strings.TrimSpace(result.RawOut)
+	if diff != "" && len(result.Findings) > 0 {
 		return fmt.Sprintf(
-			"⚠️  Terraform formatting issues detected:\n%s\n   Run '%s fmt %s' to fix",
-			strings.TrimSpace(diff),
+			"⚠️  Terraform formatting issues detected:\n%s\n   Run '%s fmt' to fix",
+			diff,
 			tool,
-			filepath.Base(filePath),
 		)
 	}
 
-	v.Logger().Debug("fmt command failed", "error", result.Err, "stderr", result.Stderr)
-
-	return fmt.Sprintf("⚠️  Failed to run '%s fmt -check': %v", tool, result.Err)
-}
-
-// runTflint runs tflint on the file if available
-func (v *TerraformValidator) runTflint(filePath string) []string {
-	// Check if tflint is available
-	if !v.toolChecker.IsAvailable("tflint") {
-		v.Logger().Debug("tflint not found in PATH, skipping")
-		return nil
+	if result.Err != nil {
+		v.Logger().Debug("fmt command failed", "error", result.Err)
+		return fmt.Sprintf("⚠️  Failed to run '%s fmt -check': %v", tool, result.Err)
 	}
 
+	return ""
+}
+
+// runTflint runs tflint on the file if available using TfLinter
+func (v *TerraformValidator) runTflint(filePath string) []string {
 	ctx, cancel := context.WithTimeout(context.Background(), terraformTimeout)
 	defer cancel()
 
-	// Run tflint on the file
-	result := v.runner.Run(ctx, "tflint", "--format=compact", filePath)
-	output := strings.TrimSpace(result.Stdout)
+	result := v.linter.Lint(ctx, filePath)
 
-	if result.Err != nil {
-		// tflint returns non-zero on findings
-		if output != "" {
-			return []string{"⚠️  tflint findings:\n" + output}
-		}
-
-		v.Logger().Debug("tflint failed", "error", result.Err, "stderr", result.Stderr)
-
+	if result.Success {
 		return nil
 	}
 
-	// No findings
+	output := strings.TrimSpace(result.RawOut)
+	if output != "" {
+		return []string{"⚠️  tflint findings:\n" + output}
+	}
+
+	if result.Err != nil {
+		v.Logger().Debug("tflint failed", "error", result.Err)
+	}
+
 	return nil
 }

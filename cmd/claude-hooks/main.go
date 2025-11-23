@@ -230,9 +230,13 @@ func registerFileValidators(registry *validator.Registry, log logger.Logger) {
 	// Initialize linters
 	runner := execpkg.NewCommandRunner(LinterTimeout)
 	shellChecker := linters.NewShellChecker(runner)
+	terraformFormatter := linters.NewTerraformFormatter(runner)
+	tfLinter := linters.NewTfLinter(runner)
+	actionLinter := linters.NewActionLinter(runner)
+	markdownLinter := linters.NewMarkdownLinter(runner)
 
 	registry.Register(
-		filevalidators.NewMarkdownValidator(log),
+		filevalidators.NewMarkdownValidator(markdownLinter, log),
 		validator.And(
 			validator.EventTypeIs(hook.PreToolUse),
 			validator.ToolTypeIn(hook.Write, hook.Edit, hook.MultiEdit),
@@ -241,7 +245,7 @@ func registerFileValidators(registry *validator.Registry, log logger.Logger) {
 	)
 
 	registry.Register(
-		filevalidators.NewTerraformValidator(log),
+		filevalidators.NewTerraformValidator(terraformFormatter, tfLinter, log),
 		validator.And(
 			validator.EventTypeIs(hook.PreToolUse),
 			validator.ToolTypeIn(hook.Write, hook.Edit, hook.MultiEdit),
@@ -262,7 +266,7 @@ func registerFileValidators(registry *validator.Registry, log logger.Logger) {
 	)
 
 	registry.Register(
-		filevalidators.NewWorkflowValidator(log),
+		filevalidators.NewWorkflowValidator(actionLinter, log),
 		validator.And(
 			validator.EventTypeIs(hook.PreToolUse),
 			validator.ToolTypeIn(hook.Write, hook.Edit, hook.MultiEdit),

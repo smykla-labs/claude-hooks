@@ -1,9 +1,13 @@
 package file_test
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	execpkg "github.com/smykla-labs/claude-hooks/internal/exec"
+	"github.com/smykla-labs/claude-hooks/internal/linters"
 	"github.com/smykla-labs/claude-hooks/internal/validators/file"
 	"github.com/smykla-labs/claude-hooks/pkg/hook"
 	"github.com/smykla-labs/claude-hooks/pkg/logger"
@@ -16,7 +20,10 @@ var _ = Describe("TerraformValidator", func() {
 	)
 
 	BeforeEach(func() {
-		v = file.NewTerraformValidator(logger.NewNoOpLogger())
+		runner := execpkg.NewCommandRunner(10 * time.Second)
+		formatter := linters.NewTerraformFormatter(runner)
+		linter := linters.NewTfLinter(runner)
+		v = file.NewTerraformValidator(formatter, linter, logger.NewNoOpLogger())
 		ctx = &hook.Context{
 			EventType: hook.PreToolUse,
 			ToolName:  hook.Write,
