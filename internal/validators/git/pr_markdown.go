@@ -40,12 +40,12 @@ func ValidatePRMarkdown(ctx context.Context, body string) PRMarkdownValidationRe
 	runner := execpkg.NewCommandRunner(markdownlintTimeout)
 
 	// Run markdownlint with stdin input
-	// Disable MD013 (line length) and MD041 (first line heading requirement for PRs only)
+	// Disable MD013 (line length), MD034 (naked URLs), and MD041 (first line heading requirement for PRs only)
 	cmdResult := runner.RunWithStdin(
 		lintCtx,
 		strings.NewReader(body),
 		"markdownlint",
-		"--disable", "MD013", "MD041",
+		"--disable", "MD013", "MD034", "MD041",
 		"--stdin",
 	)
 
