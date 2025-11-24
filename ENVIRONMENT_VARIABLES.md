@@ -32,8 +32,6 @@ export KLAUDIUSH_USE_SDK_GIT=true
 export KLAUDIUSH_USE_SDK_GIT=false
 ```
 
-**Migration Note**: The old `CLAUDE_HOOKS_USE_SDK_GIT` environment variable is deprecated. Use `KLAUDIUSH_USE_SDK_GIT` instead.
-
 ## Git Validators
 
 ### Git Add Validator

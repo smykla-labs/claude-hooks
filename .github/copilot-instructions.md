@@ -141,7 +141,6 @@ registry.Register(
 - Blocks `feat(ci)`, `fix(test)` - infrastructure changes should use `ci(...)`, `test(...)`
 - No PR references (`#123` or GitHub URLs)
 - No Claude AI attribution
-- Signoff validation when built with `-ldflags` setting `ExpectedSignoff`
 
 **File Validators** (`internal/validators/file/`):
 
@@ -170,16 +169,6 @@ All validators log to `~/.claude/hooks/dispatcher.log`:
 - **Mocks**: `git_runner_mock.go` for git operations
 - **Test files**: `*_test.go`, `*_suite_test.go` for Ginkgo suites
 - Run single test: `go test -v ./pkg/parser -run TestBashParser`
-
-## Build-time Configuration
-
-**Signoff Validation**:
-
-```bash
-go build -ldflags="-X 'github.com/smykla-labs/klaudiush/internal/validators/git.ExpectedSignoff=Name <email>'" ./cmd/klaudiush
-```
-
-This enforces exact signoff match in commit messages when using `task build:prod`.
 
 ## Exit Codes
 

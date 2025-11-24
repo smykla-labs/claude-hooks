@@ -1,7 +1,6 @@
 package git
 
 // RepositoryAdapter adapts the Repository interface to implement Runner
-// This provides backward compatibility with existing validators while using the SDK
 type RepositoryAdapter struct {
 	repo Repository
 }

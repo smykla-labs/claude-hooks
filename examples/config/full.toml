@@ -82,8 +82,8 @@ heading_spacing = true
 code_block_formatting = true
 list_formatting = true
 
-# markdownlint-cli integration
-use_markdownlint = false  # Default: false (for backward compatibility)
+# markdownlint-cli integration (external tool, opt-in)
+use_markdownlint = false  # Default: false
 # markdownlint_path = "/custom/path/to/markdownlint"  # Optional: custom path
 
 # Enable/disable specific markdownlint-cli rules

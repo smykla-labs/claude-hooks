@@ -16,7 +16,6 @@ const (
 )
 
 // DefaultConfig returns a Config with all default values populated.
-// This represents the current hardcoded behavior for backward compatibility.
 func DefaultConfig() *config.Config {
 	return &config.Config{
 		Global:     DefaultGlobalConfig(),

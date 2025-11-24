@@ -336,11 +336,9 @@ The project supports two git operation implementations:
   - Used by default, no configuration needed
 
 - **CLI Implementation**: Executes git commands via shell
-  - Fully tested and backward compatible
+  - Fully tested fallback implementation
   - Automatic fallback if SDK initialization fails
   - Opt-in with `KLAUDIUSH_USE_SDK_GIT=false` or `KLAUDIUSH_USE_SDK_GIT=0`
-
-**Migration Note**: The old `CLAUDE_HOOKS_USE_SDK_GIT` environment variable is deprecated. Use `KLAUDIUSH_USE_SDK_GIT` instead.
 
 ### Example Configurations
 

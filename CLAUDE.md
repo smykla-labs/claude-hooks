@@ -125,7 +125,7 @@ check_conventional_commits = true
 
 **Interactive Setup** (`internal/initcmd/`): Extensible options via `ConfigOption` interface, prompts via `Prompter`
 
-**Backward Compatibility**: No config files required, validators accept `nil` config, use built-in defaults
+**No Config Required**: Validators accept `nil` config and use built-in defaults when no configuration is provided
 
 ### Logging
 
@@ -140,17 +140,6 @@ Framework: Ginkgo/Gomega. 336 tests. Mocks: `git_runner_mock.go`. Run: `mise exe
 **Tools** (mise): Go 1.25.4, golangci-lint 2.6.2, task 3.45.5, markdownlint-cli 0.46.0. Run `mise install`. See `SETUP.md`.
 
 **Linters** (`.golangci.yml`): Nil safety (nilnesserr, govet), completeness (exhaustive, gochecksumtype), quality (gocognit, goconst, cyclop, dupl)
-
-## Build-time Configuration (Deprecated)
-
-Build-time signoff via ldflags is deprecated. Use runtime config instead:
-
-```toml
-[validators.git.commit.message]
-expected_signoff = "Name <email>"
-```
-
-Or: `export KLAUDIUSH_VALIDATORS_GIT_COMMIT_MESSAGE_EXPECTED_SIGNOFF="Name <email>"` or `./bin/klaudiush init --global`
 
 ## Exit Codes
 

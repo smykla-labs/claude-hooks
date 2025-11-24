@@ -60,7 +60,6 @@ Claude Hooks includes several security features:
 
 - Claude Hooks runs as a PreToolUse hook and has access to command inputs
 - Logs are stored in plaintext at `~/.claude/hooks/dispatcher.log`
-- Build-time configuration (e.g., `ExpectedSignoff`) is embedded in the binary
 - Git operations may execute external commands
 
 ## Acknowledgments

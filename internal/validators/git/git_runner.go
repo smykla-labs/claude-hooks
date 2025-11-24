@@ -10,8 +10,7 @@ import (
 	gitpkg "github.com/smykla-labs/klaudiush/internal/git"
 )
 
-// GitRunner is an alias for the git.Runner interface
-// This maintains backward compatibility while using the centralized interface definition
+// GitRunner is an alias for the git.Runner interface for cleaner imports
 type GitRunner = gitpkg.Runner
 
 // CLIGitRunner implements GitRunner using actual git commands
@@ -30,13 +29,13 @@ func NewCLIGitRunner() *CLIGitRunner {
 
 // NewGitRunner creates a GitRunner instance based on environment configuration
 // By default, uses SDK-based implementation for better performance
-// Set CLAUDE_HOOKS_USE_SDK_GIT to "false" or "0" to use CLI-based implementation
+// Set KLAUDIUSH_USE_SDK_GIT to "false" or "0" to use CLI-based implementation
 // Falls back to CLI if SDK initialization fails
 // This function always returns a valid GitRunner instance
 //
 //nolint:ireturn,nolintlint // Factory function intentionally returns interface
 func NewGitRunner() GitRunner {
-	useSDK := os.Getenv("CLAUDE_HOOKS_USE_SDK_GIT")
+	useSDK := os.Getenv("KLAUDIUSH_USE_SDK_GIT")
 
 	// Explicitly disabled: use CLI
 	if useSDK == "false" || useSDK == "0" {

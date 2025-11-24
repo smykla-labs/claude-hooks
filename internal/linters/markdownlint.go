@@ -70,7 +70,7 @@ func (l *RealMarkdownLinter) Lint(
 ) *LintResult {
 	var allWarnings []string
 
-	// Run custom markdown analysis (always enabled for backward compatibility)
+	// Run custom markdown analysis (built-in rules)
 	analysisResult := validators.AnalyzeMarkdown(content, initialState)
 	allWarnings = append(allWarnings, analysisResult.Warnings...)
 
@@ -104,7 +104,7 @@ func (l *RealMarkdownLinter) Lint(
 // shouldUseMarkdownlint determines if markdownlint-cli should be used
 func (l *RealMarkdownLinter) shouldUseMarkdownlint() bool {
 	if l.config == nil || l.config.UseMarkdownlint == nil {
-		return false // Default: disabled for backward compatibility
+		return false // Default: disabled (external tool)
 	}
 
 	return *l.config.UseMarkdownlint
