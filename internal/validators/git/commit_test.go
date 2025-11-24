@@ -2,6 +2,7 @@ package git_test
 
 import (
 	"context"
+	"os"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -632,6 +633,138 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				Expect(result.Passed).To(BeFalse())
 				Expect(result.Details["errors"]).To(ContainSubstring("Wrong signoff identity"))
 			})
+		})
+	})
+
+	Describe("File-based commit messages", func() {
+		var tmpFile string
+
+		AfterEach(func() {
+			if tmpFile != "" {
+				_ = os.Remove(tmpFile)
+				tmpFile = ""
+			}
+		})
+
+		It("should pass with valid message from file using -F", func() {
+			file, err := os.CreateTemp("", "commit-msg-*.txt")
+			Expect(err).ToNot(HaveOccurred())
+			tmpFile = file.Name()
+
+			_, err = file.WriteString(
+				"feat(api): add new endpoint\n\nThis adds a new API endpoint.",
+			)
+			Expect(err).ToNot(HaveOccurred())
+			file.Close()
+
+			ctx := &hook.Context{
+				EventType: hook.PreToolUse,
+				ToolName:  hook.Bash,
+				ToolInput: hook.ToolInput{
+					Command: `git commit -sS -a -F ` + tmpFile,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeTrue())
+		})
+
+		It("should pass with valid message from file using --file", func() {
+			file, err := os.CreateTemp("", "commit-msg-*.txt")
+			Expect(err).ToNot(HaveOccurred())
+			tmpFile = file.Name()
+
+			_, err = file.WriteString("fix(auth): resolve login issue")
+			Expect(err).ToNot(HaveOccurred())
+			file.Close()
+
+			ctx := &hook.Context{
+				EventType: hook.PreToolUse,
+				ToolName:  hook.Bash,
+				ToolInput: hook.ToolInput{
+					Command: `git commit -sS -a --file ` + tmpFile,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeTrue())
+		})
+
+		It("should fail with invalid message from file", func() {
+			file, err := os.CreateTemp("", "commit-msg-*.txt")
+			Expect(err).ToNot(HaveOccurred())
+			tmpFile = file.Name()
+
+			_, err = file.WriteString("Add new feature")
+			Expect(err).ToNot(HaveOccurred())
+			file.Close()
+
+			ctx := &hook.Context{
+				EventType: hook.PreToolUse,
+				ToolName:  hook.Bash,
+				ToolInput: hook.ToolInput{
+					Command: `git commit -sS -a -F ` + tmpFile,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeFalse())
+			Expect(
+				result.Details["errors"],
+			).To(ContainSubstring("doesn't follow conventional commits format"))
+		})
+
+		It("should fail when file does not exist", func() {
+			ctx := &hook.Context{
+				EventType: hook.PreToolUse,
+				ToolName:  hook.Bash,
+				ToolInput: hook.ToolInput{
+					Command: `git commit -sS -a -F /nonexistent/file.txt`,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeFalse())
+			Expect(result.Message).To(ContainSubstring("Failed to read commit message"))
+		})
+
+		It("should pass with empty file (message from editor)", func() {
+			file, err := os.CreateTemp("", "commit-msg-*.txt")
+			Expect(err).ToNot(HaveOccurred())
+			tmpFile = file.Name()
+			file.Close()
+
+			ctx := &hook.Context{
+				EventType: hook.PreToolUse,
+				ToolName:  hook.Bash,
+				ToolInput: hook.ToolInput{
+					Command: `git commit -sS -a -F ` + tmpFile,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeTrue())
+		})
+
+		It("should handle combined flags with file", func() {
+			file, err := os.CreateTemp("", "commit-msg-*.txt")
+			Expect(err).ToNot(HaveOccurred())
+			tmpFile = file.Name()
+
+			_, err = file.WriteString("feat(api): add endpoint")
+			Expect(err).ToNot(HaveOccurred())
+			file.Close()
+
+			ctx := &hook.Context{
+				EventType: hook.PreToolUse,
+				ToolName:  hook.Bash,
+				ToolInput: hook.ToolInput{
+					Command: `git commit -sSF ` + tmpFile,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeTrue())
 		})
 	})
 

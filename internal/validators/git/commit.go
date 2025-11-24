@@ -3,6 +3,7 @@ package git
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/smykla-labs/klaudiush/internal/templates"
@@ -16,6 +17,14 @@ const (
 	gitCommand       = "git"
 	commitSubcommand = "commit"
 	addSubcommand    = "add"
+)
+
+var (
+	// Commit message flags for inline messages.
+	commitMessageFlags = []string{"-m", "--message"}
+
+	// Commit file flags for message from file.
+	commitFileFlags = []string{"-F", "--file"}
 )
 
 // CommitValidator validates git commit commands and messages
@@ -79,10 +88,15 @@ func (v *CommitValidator) Validate(_ context.Context, hookCtx *hook.Context) *va
 		}
 
 		// Extract and validate commit message
-		commitMsg := gitCmd.ExtractCommitMessage()
+		commitMsg, err := v.extractCommitMessage(gitCmd)
+		if err != nil {
+			log.Error("Failed to extract commit message", "error", err)
+			return validator.Fail(fmt.Sprintf("Failed to read commit message: %v", err))
+		}
+
 		if commitMsg == "" {
-			// No -m flag, message will come from editor
-			log.Debug("No -m flag, message will come from editor")
+			// No message flag, message will come from editor
+			log.Debug("No message flag, message will come from editor")
 			return validator.Pass()
 		}
 
@@ -187,6 +201,41 @@ func (*CommitValidator) hasGitAddInChain(commands []parser.Command) bool {
 	}
 
 	return false
+}
+
+// extractCommitMessage extracts commit message from -m/--message or -F/--file flags.
+func (v *CommitValidator) extractCommitMessage(gitCmd *parser.GitCommand) (string, error) {
+	// Check for file flags first (-F/--file)
+	if filePath := v.getFlagValue(gitCmd, commitFileFlags); filePath != "" {
+		v.Logger().Debug("Reading commit message from file", "path", filePath)
+
+		content, err := os.ReadFile(
+			filePath,
+		) //#nosec G304 -- file path is user-provided from git commit -F flag
+		if err != nil {
+			return "", fmt.Errorf("failed to read commit message file %s: %w", filePath, err)
+		}
+
+		return strings.TrimSpace(string(content)), nil
+	}
+
+	// Check for inline message flags (-m/--message)
+	if msg := v.getFlagValue(gitCmd, commitMessageFlags); msg != "" {
+		return msg, nil
+	}
+
+	return "", nil
+}
+
+// getFlagValue returns the value for any of the provided flags, or empty string if not found.
+func (*CommitValidator) getFlagValue(gitCmd *parser.GitCommand, flags []string) string {
+	for _, flag := range flags {
+		if value := gitCmd.GetFlagValue(flag); value != "" {
+			return value
+		}
+	}
+
+	return ""
 }
 
 // Ensure CommitValidator implements validator.Validator
