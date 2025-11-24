@@ -47,12 +47,6 @@ All other tools (Go, golangci-lint, task, markdownlint-cli) are managed by mise 
    task deps
    ```
 
-5. Install git hooks:
-
-   ```bash
-   task install:hooks
-   ```
-
 ## Development Workflow
 
 ### Branch Naming
@@ -70,7 +64,7 @@ Valid branch types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`,
 ### Making Changes
 
 1. **Create a feature branch** from `main`:
-   
+
    ```bash
    git fetch upstream
    git checkout -b feat/my-feature upstream/main
@@ -109,26 +103,26 @@ Valid branch types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`,
 
    ```go
    package category
-   
+
    import (
        "github.com/smykla-labs/klaudiush/internal/validator"
        "github.com/smykla-labs/klaudiush/pkg/hook"
    )
-   
+
    type MyValidator struct {
        validator.BaseValidator
    }
-   
+
    func NewMyValidator(logger logger.Logger) *MyValidator {
        v := &MyValidator{}
        v.SetLogger(logger)
        return v
    }
-   
+
    func (v *MyValidator) Name() string {
        return "MyValidator"
    }
-   
+
    func (v *MyValidator) Validate(ctx *hook.Context) *validator.Result {
        // Validation logic here
        return validator.Pass()
@@ -147,7 +141,7 @@ Valid branch types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`,
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
 
-```
+```text
 type(scope): description
 
 Optional body with more details.
@@ -184,7 +178,7 @@ Lines should be ≤72 characters.
 
 ✅ **Good**:
 
-```
+```text
 feat(validators): add Terraform format validator
 
 ci(upgrade): handle /v2 module path in workflow
@@ -194,7 +188,7 @@ test(parser): add test for heredoc parsing
 
 ❌ **Bad**:
 
-```
+```text
 fix(ci): update workflow  # Use ci(...) instead
 feat(test): add helper    # Use test(...) instead
 update code              # Missing type/scope
@@ -224,7 +218,7 @@ git commit -sS -m "feat(api): add user endpoint"
    ```
 
 2. **Run quality checks**:
-   
+
    ```bash
    task verify
    ```
@@ -242,7 +236,7 @@ git commit -sS -m "feat(api): add user endpoint"
      --body "## Summary
    - Add Terraform format validation
    - Add tflint integration
-   
+
    ## Test plan
    - Unit tests for Terraform validator
    - Integration tests with sample .tf files"
@@ -252,7 +246,7 @@ git commit -sS -m "feat(api): add user endpoint"
 
 Use same format as commit messages:
 
-```
+```text
 type(scope): description
 ```
 
@@ -356,9 +350,6 @@ task check
 
 # Lint only
 task lint
-
-# Lint staged files
-task lint:staged
 ```
 
 ### Code Style
@@ -381,31 +372,10 @@ From `CLAUDE.md`:
 - Prefer `switch` over `if` chains
 - Package-level consts/vars instead of hardcoded strings
 
-### Pre-commit Hooks
-
-The project includes git hooks that run automatically:
-
-**Pre-commit**:
-
-- Lints staged files
-- Tests packages with changes
-
-**Pre-push**:
-
-- Full linting
-- Full test suite
-
-To bypass hooks (not recommended):
-
-```bash
-git commit --no-verify
-git push --no-verify
-```
-
 ## Getting Help
 
-- **Issues**: https://github.com/smykla-labs/klaudiush/issues
-- **Discussions**: https://github.com/smykla-labs/klaudiush/discussions
+- **Issues**: <https://github.com/smykla-labs/klaudiush/issues>
+- **Discussions**: <https://github.com/smykla-labs/klaudiush/discussions>
 - **Documentation**: See README.md and CLAUDE.md
 
 ## License
