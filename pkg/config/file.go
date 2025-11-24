@@ -29,21 +29,36 @@ type MarkdownValidatorConfig struct {
 	// Default: 2
 	ContextLines *int `json:"context_lines,omitempty" toml:"context_lines"`
 
-	// HeadingSpacing enforces blank lines around headings.
+	// HeadingSpacing enforces blank lines around headings (custom rule).
 	// Default: true
 	HeadingSpacing *bool `json:"heading_spacing,omitempty" toml:"heading_spacing"`
 
-	// CodeBlockFormatting enforces proper code block formatting.
+	// CodeBlockFormatting enforces proper code block formatting (custom rule).
 	// Default: true
 	CodeBlockFormatting *bool `json:"code_block_formatting,omitempty" toml:"code_block_formatting"`
 
-	// ListFormatting enforces proper list item formatting and spacing.
+	// ListFormatting enforces proper list item formatting and spacing (custom rule).
 	// Default: true
 	ListFormatting *bool `json:"list_formatting,omitempty" toml:"list_formatting"`
 
 	// UseMarkdownlint enables markdownlint-cli integration if available.
 	// Default: true
 	UseMarkdownlint *bool `json:"use_markdownlint,omitempty" toml:"use_markdownlint"`
+
+	// MarkdownlintPath is the path to the markdownlint binary.
+	// Default: "" (use PATH)
+	MarkdownlintPath string `json:"markdownlint_path,omitempty" toml:"markdownlint_path"`
+
+	// MarkdownlintRules configures specific markdownlint-cli rules.
+	// Map of rule name (e.g., "MD022") to enabled status.
+	// When not specified, all markdownlint default rules are enabled.
+	// Example: {"MD022": true, "MD041": false}
+	MarkdownlintRules map[string]bool `json:"markdownlint_rules,omitempty" toml:"markdownlint_rules"`
+
+	// MarkdownlintConfig is the path to a markdownlint configuration file.
+	// If specified, this file takes precedence over MarkdownlintRules.
+	// Default: "" (use MarkdownlintRules or markdownlint defaults)
+	MarkdownlintConfig string `json:"markdownlint_config,omitempty" toml:"markdownlint_config"`
 }
 
 // ShellScriptValidatorConfig configures the shell script validator.

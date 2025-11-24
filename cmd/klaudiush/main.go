@@ -7,19 +7,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/spf13/cobra"
 
+	"github.com/smykla-labs/klaudiush/internal/config/factory"
+	"github.com/smykla-labs/klaudiush/internal/config/provider"
 	"github.com/smykla-labs/klaudiush/internal/dispatcher"
-	execpkg "github.com/smykla-labs/klaudiush/internal/exec"
-	githubpkg "github.com/smykla-labs/klaudiush/internal/github"
-	"github.com/smykla-labs/klaudiush/internal/linters"
 	"github.com/smykla-labs/klaudiush/internal/parser"
-	"github.com/smykla-labs/klaudiush/internal/validator"
-	filevalidators "github.com/smykla-labs/klaudiush/internal/validators/file"
-	gitvalidators "github.com/smykla-labs/klaudiush/internal/validators/git"
-	notificationvalidators "github.com/smykla-labs/klaudiush/internal/validators/notification"
+	"github.com/smykla-labs/klaudiush/pkg/config"
 	"github.com/smykla-labs/klaudiush/pkg/hook"
 	"github.com/smykla-labs/klaudiush/pkg/logger"
 )
@@ -33,15 +28,15 @@ const (
 
 	// CommandDisplayLength is the maximum length of command to display in logs.
 	CommandDisplayLength = 50
-
-	// LinterTimeout is the timeout for linter operations.
-	LinterTimeout = 10 * time.Second
 )
 
 var (
-	hookType  string
-	debugMode bool
-	traceMode bool
+	hookType     string
+	debugMode    bool
+	traceMode    bool
+	configPath   string
+	globalConfig string
+	disableList  []string
 )
 
 func main() {
@@ -69,6 +64,25 @@ func init() {
 	)
 	rootCmd.Flags().BoolVar(&debugMode, "debug", true, "Enable debug logging")
 	rootCmd.Flags().BoolVar(&traceMode, "trace", false, "Enable trace logging")
+	rootCmd.Flags().StringVarP(
+		&configPath,
+		"config",
+		"c",
+		"",
+		"Path to project configuration file (default: .klaudiush/config.toml or klaudiush.toml)",
+	)
+	rootCmd.Flags().StringVar(
+		&globalConfig,
+		"global-config",
+		"",
+		"Path to global configuration file (default: ~/.klaudiush/config.toml)",
+	)
+	rootCmd.Flags().StringSliceVar(
+		&disableList,
+		"disable",
+		[]string{},
+		"Comma-separated list of validators to disable (e.g., commit,markdown)",
+	)
 }
 
 func run(_ *cobra.Command, _ []string) error {
@@ -97,6 +111,12 @@ func run(_ *cobra.Command, _ []string) error {
 		"trace", traceMode,
 	)
 
+	// Load configuration
+	cfg, err := loadConfig(log)
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
 	// Parse JSON input
 	jsonParser := parser.NewJSONParser(os.Stdin)
 
@@ -117,11 +137,9 @@ func run(_ *cobra.Command, _ []string) error {
 		"file", filepath.Base(ctx.GetFilePath()),
 	)
 
-	// Create validator registry
-	registry := validator.NewRegistry()
-
-	// Register validators
-	registerValidators(registry, log)
+	// Build validator registry from configuration
+	registryBuilder := factory.NewRegistryBuilder(log)
+	registry := registryBuilder.Build(cfg)
 
 	// Create dispatcher
 	disp := dispatcher.NewDispatcher(registry, log)
@@ -156,142 +174,47 @@ func run(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func registerValidators(registry *validator.Registry, log logger.Logger) {
-	registerGitValidators(registry, log)
-	registerFileValidators(registry, log)
-	registerNotificationValidators(registry, log)
+// loadConfig loads configuration from all sources with precedence.
+func loadConfig(log logger.Logger) (*config.Config, error) {
+	// Build flags map from CLI arguments
+	flags := buildFlagsMap()
+
+	// Create provider with all sources
+	prov, err := provider.NewDefaultProvider(flags)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create config provider: %w", err)
+	}
+
+	// Load and merge configuration
+	cfg, err := prov.Load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+
+	log.Debug("configuration loaded",
+		"sources", len(prov.Sources()),
+	)
+
+	return cfg, nil
 }
 
-func registerGitValidators(registry *validator.Registry, log logger.Logger) {
-	registry.Register(
-		gitvalidators.NewAddValidator(log, nil, nil), // nil uses RealGitRunner
-		validator.And(
-			validator.EventTypeIs(hook.PreToolUse),
-			validator.ToolTypeIs(hook.Bash),
-			validator.CommandContains("git add"),
-		),
-	)
+// buildFlagsMap converts CLI flags to a map for the config provider.
+func buildFlagsMap() map[string]any {
+	flags := make(map[string]any)
 
-	registry.Register(
-		gitvalidators.NewNoVerifyValidator(log, nil),
-		validator.And(
-			validator.EventTypeIs(hook.PreToolUse),
-			validator.ToolTypeIs(hook.Bash),
-			validator.CommandContains("git commit"),
-		),
-	)
+	if configPath != "" {
+		flags["config_path"] = configPath
+	}
 
-	registry.Register(
-		gitvalidators.NewCommitValidator(log, nil, nil), // nil uses RealGitRunner
-		validator.And(
-			validator.EventTypeIs(hook.PreToolUse),
-			validator.ToolTypeIs(hook.Bash),
-			validator.CommandContains("git commit"),
-		),
-	)
+	if globalConfig != "" {
+		flags["global_config"] = globalConfig
+	}
 
-	registry.Register(
-		gitvalidators.NewPushValidator(log, nil, nil), // nil uses RealGitRunner
-		validator.And(
-			validator.EventTypeIs(hook.PreToolUse),
-			validator.ToolTypeIs(hook.Bash),
-			validator.CommandContains("git push"),
-		),
-	)
+	if len(disableList) > 0 {
+		flags["disable"] = disableList
+	}
 
-	registry.Register(
-		gitvalidators.NewPRValidator(nil, log),
-		validator.And(
-			validator.EventTypeIs(hook.PreToolUse),
-			validator.ToolTypeIs(hook.Bash),
-			validator.CommandContains("gh pr create"),
-		),
-	)
-
-	registry.Register(
-		gitvalidators.NewBranchValidator(nil, log),
-		validator.And(
-			validator.EventTypeIs(hook.PreToolUse),
-			validator.ToolTypeIs(hook.Bash),
-			validator.Or(
-				validator.CommandContains("git checkout -b"),
-				validator.And(
-					validator.CommandContains("git branch"),
-					validator.Not(validator.Or(
-						validator.CommandContains("-d"),
-						validator.CommandContains("-D"),
-						validator.CommandContains("--delete"),
-					)),
-				),
-			),
-		),
-	)
-}
-
-func registerFileValidators(registry *validator.Registry, log logger.Logger) {
-	// Initialize linters
-	runner := execpkg.NewCommandRunner(LinterTimeout)
-	shellChecker := linters.NewShellChecker(runner)
-	terraformFormatter := linters.NewTerraformFormatter(runner)
-	tfLinter := linters.NewTfLinter(runner)
-	actionLinter := linters.NewActionLinter(runner)
-	markdownLinter := linters.NewMarkdownLinter(runner)
-
-	// Initialize GitHub client
-	githubClient := githubpkg.NewClient()
-
-	registry.Register(
-		filevalidators.NewMarkdownValidator(nil, markdownLinter, log),
-		validator.And(
-			validator.EventTypeIs(hook.PreToolUse),
-			validator.ToolTypeIn(hook.Write, hook.Edit, hook.MultiEdit),
-			validator.FileExtensionIs(".md"),
-		),
-	)
-
-	registry.Register(
-		filevalidators.NewTerraformValidator(terraformFormatter, tfLinter, log, nil),
-		validator.And(
-			validator.EventTypeIs(hook.PreToolUse),
-			validator.ToolTypeIn(hook.Write, hook.Edit, hook.MultiEdit),
-			validator.FileExtensionIs(".tf"),
-		),
-	)
-
-	registry.Register(
-		filevalidators.NewShellScriptValidator(log, shellChecker, nil),
-		validator.And(
-			validator.EventTypeIs(hook.PreToolUse),
-			validator.ToolTypeIn(hook.Write, hook.Edit, hook.MultiEdit),
-			validator.Or(
-				validator.FileExtensionIs(".sh"),
-				validator.FileExtensionIs(".bash"),
-			),
-		),
-	)
-
-	registry.Register(
-		filevalidators.NewWorkflowValidator(actionLinter, githubClient, log, nil),
-		validator.And(
-			validator.EventTypeIs(hook.PreToolUse),
-			validator.ToolTypeIn(hook.Write, hook.Edit, hook.MultiEdit),
-			validator.Or(
-				validator.FilePathContains(".github/workflows/"),
-				validator.FilePathContains(".github/actions/"),
-			),
-			validator.Or(
-				validator.FileExtensionIs(".yml"),
-				validator.FileExtensionIs(".yaml"),
-			),
-		),
-	)
-}
-
-func registerNotificationValidators(registry *validator.Registry, log logger.Logger) {
-	registry.Register(
-		notificationvalidators.NewBellValidator(log, nil),
-		validator.EventTypeIs(hook.Notification),
-	)
+	return flags
 }
 
 func truncate(s string, maxLen int) string {

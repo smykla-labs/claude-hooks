@@ -44,10 +44,12 @@ func (f *FileValidatorFactory) CreateValidators(cfg *config.Config) []ValidatorW
 	terraformFormatter := linters.NewTerraformFormatter(runner)
 	tfLinter := linters.NewTfLinter(runner)
 	actionLinter := linters.NewActionLinter(runner)
-	markdownLinter := linters.NewMarkdownLinter(runner)
 	githubClient := githubpkg.NewClient()
 
 	if cfg.Validators.File.Markdown != nil && cfg.Validators.File.Markdown.IsEnabled() {
+		// Create markdown linter with config for rule support
+		markdownLinter := linters.NewMarkdownLinterWithConfig(runner, cfg.Validators.File.Markdown)
+
 		validators = append(
 			validators,
 			f.createMarkdownValidator(cfg.Validators.File.Markdown, markdownLinter),

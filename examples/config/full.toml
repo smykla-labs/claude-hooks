@@ -76,7 +76,24 @@ enabled = true
 severity = "error"
 timeout = "10s"
 context_lines = 2
-use_markdownlint = true
+
+# Custom rules (always enabled)
+heading_spacing = true
+code_block_formatting = true
+list_formatting = true
+
+# markdownlint-cli integration
+use_markdownlint = false  # Default: false (for backward compatibility)
+# markdownlint_path = "/custom/path/to/markdownlint"  # Optional: custom path
+
+# Enable/disable specific markdownlint-cli rules
+# Only used when use_markdownlint = true
+# [validators.file.markdown.markdownlint_rules]
+# MD022 = true  # Blanks around headings
+# MD041 = false  # First line in file should be a top level heading
+
+# Or use a markdownlint config file
+# markdownlint_config = ".markdownlint.json"
 
 # Shell Script Validator
 [validators.file.shellscript]
