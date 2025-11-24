@@ -20,9 +20,9 @@ This project adheres to a Code of Conduct. By participating, you are expected to
 
 ### Prerequisites
 
-- Go 1.25.4 or later
 - [mise](https://mise.jdx.dev/) for tool version management
-- [Task](https://taskfile.dev/) for build automation
+
+All other tools (Go, golangci-lint, task, markdownlint-cli) are managed by mise and will be installed automatically
 
 ### Setup
 

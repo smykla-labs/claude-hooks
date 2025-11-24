@@ -297,8 +297,10 @@ All validators log to `~/.claude/hooks/dispatcher.log`:
 **Tool Version Management**:
 
 - Uses [mise](https://mise.jdx.dev/) for consistent tool versions
-- Go 1.25.4 (latest stable as of 2025-11-23)
-- golangci-lint 2.6.2 (latest version)
+- Go 1.25.4
+- golangci-lint 2.6.2
+- task 3.45.5
+- markdownlint-cli 0.46.0
 - Run `mise install` to install pinned versions
 - See `SETUP.md` for detailed setup instructions
 
