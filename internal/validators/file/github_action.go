@@ -59,7 +59,7 @@ type actionUse struct {
 	FullLine      string
 }
 
-// WorkflowValidator validates GitHub Actions workflow files
+// WorkflowValidator validates GitHub Actions workflow and composable action files
 type WorkflowValidator struct {
 	validator.BaseValidator
 	linter       linters.ActionLinter
@@ -79,20 +79,20 @@ func NewWorkflowValidator(
 	}
 }
 
-// Validate checks GitHub Actions workflow file for digest pinning and runs actionlint
+// Validate checks GitHub Actions workflow and composable action files for digest pinning and runs actionlint
 func (v *WorkflowValidator) Validate(ctx context.Context, hookCtx *hook.Context) *validator.Result {
 	log := v.Logger()
 
-	// Check if this is a workflow file
+	// Check if this is a workflow or composable action file
 	filePath := hookCtx.GetFilePath()
 	if !v.isWorkflowFile(filePath) {
-		log.Debug("not a workflow file, skipping", "path", filePath)
+		log.Debug("not a workflow or action file, skipping", "path", filePath)
 		return validator.Pass()
 	}
 
 	content, err := v.getContent(hookCtx)
 	if err != nil {
-		log.Debug("skipping workflow validation", "error", err)
+		log.Debug("skipping workflow/action validation", "error", err)
 		return validator.Pass()
 	}
 
@@ -119,7 +119,7 @@ func (v *WorkflowValidator) Validate(ctx context.Context, hookCtx *hook.Context)
 
 	// Report warnings
 	if len(allWarnings) > 0 {
-		log.Debug("workflow validation warnings", "count", len(allWarnings))
+		log.Debug("workflow/action validation warnings", "count", len(allWarnings))
 
 		for _, warn := range allWarnings {
 			fmt.Fprintf(os.Stderr, "⚠️  %s\n", warn)
@@ -128,7 +128,7 @@ func (v *WorkflowValidator) Validate(ctx context.Context, hookCtx *hook.Context)
 
 	// Report errors (blocking)
 	if len(allErrors) > 0 {
-		message := "GitHub Actions workflow validation failed"
+		message := "GitHub Actions workflow/action validation failed"
 		details := map[string]string{
 			"file":   filepath.Base(filePath),
 			"errors": strings.Join(allErrors, "\n"),
@@ -147,16 +147,25 @@ func (v *WorkflowValidator) Validate(ctx context.Context, hookCtx *hook.Context)
 	return validator.Pass()
 }
 
-// isWorkflowFile checks if the file path is a GitHub Actions workflow
+// isWorkflowFile checks if the file path is a GitHub Actions workflow or composable action
 func (*WorkflowValidator) isWorkflowFile(path string) bool {
-	// Match .github/workflows/*.yml or .github/workflows/*.yaml
-	if !strings.Contains(path, ".github/workflows/") {
+	ext := filepath.Ext(path)
+	if ext != ".yml" && ext != ".yaml" {
 		return false
 	}
 
-	ext := filepath.Ext(path)
+	// Match .github/workflows/*.yml or .github/workflows/*.yaml
+	if strings.Contains(path, ".github/workflows/") {
+		return true
+	}
 
-	return ext == ".yml" || ext == ".yaml"
+	// Match .github/actions/*/action.yml or .github/actions/*/action.yaml
+	if strings.Contains(path, ".github/actions/") {
+		base := filepath.Base(path)
+		return base == "action.yml" || base == "action.yaml"
+	}
+
+	return false
 }
 
 // getContent extracts workflow content from context

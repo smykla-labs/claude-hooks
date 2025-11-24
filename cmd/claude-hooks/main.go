@@ -275,7 +275,10 @@ func registerFileValidators(registry *validator.Registry, log logger.Logger) {
 		validator.And(
 			validator.EventTypeIs(hook.PreToolUse),
 			validator.ToolTypeIn(hook.Write, hook.Edit, hook.MultiEdit),
-			validator.FilePathContains(".github/workflows/"),
+			validator.Or(
+				validator.FilePathContains(".github/workflows/"),
+				validator.FilePathContains(".github/actions/"),
+			),
 			validator.Or(
 				validator.FileExtensionIs(".yml"),
 				validator.FileExtensionIs(".yaml"),

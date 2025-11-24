@@ -149,7 +149,7 @@ jobs:
 				Expect(result.ShouldBlock).To(BeTrue())
 				Expect(
 					result.Message,
-				).To(ContainSubstring("GitHub Actions workflow validation failed"))
+				).To(ContainSubstring("GitHub Actions workflow/action validation failed"))
 				Expect(result.Details["errors"]).To(ContainSubstring("missing version comment"))
 			})
 
@@ -420,6 +420,127 @@ jobs:
 					ToolName:  hook.Edit,
 					ToolInput: hook.ToolInput{
 						FilePath: "/project/.github/workflows/test.yml",
+					},
+				}
+
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeTrue())
+			})
+		})
+
+		Context("when file is a composable action", func() {
+			It("should validate action.yml with digest-pinned actions", func() {
+				ctx := &hook.Context{
+					EventType: hook.PreToolUse,
+					ToolName:  hook.Write,
+					ToolInput: hook.ToolInput{
+						FilePath: "/project/.github/actions/my-action/action.yml",
+						Content: `name: My Action
+description: A custom action
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+`,
+					},
+				}
+
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeTrue())
+			})
+
+			It("should validate action.yaml with digest-pinned actions", func() {
+				ctx := &hook.Context{
+					EventType: hook.PreToolUse,
+					ToolName:  hook.Write,
+					ToolInput: hook.ToolInput{
+						FilePath: "/project/.github/actions/setup/action.yaml",
+						Content: `name: Setup Action
+description: Setup environment
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32 # v5.0.2
+`,
+					},
+				}
+
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeTrue())
+			})
+
+			It("should fail for action.yml with missing version comment", func() {
+				ctx := &hook.Context{
+					EventType: hook.PreToolUse,
+					ToolName:  hook.Write,
+					ToolInput: hook.ToolInput{
+						FilePath: "/project/.github/actions/my-action/action.yml",
+						Content: `name: My Action
+description: A custom action
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+`,
+					},
+				}
+
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeFalse())
+				Expect(result.ShouldBlock).To(BeTrue())
+				Expect(result.Details["errors"]).To(ContainSubstring("missing version comment"))
+			})
+
+			It("should fail for action with tag-pinned action without explanation", func() {
+				ctx := &hook.Context{
+					EventType: hook.PreToolUse,
+					ToolName:  hook.Write,
+					ToolInput: hook.ToolInput{
+						FilePath: "/project/.github/actions/deploy/action.yml",
+						Content: `name: Deploy Action
+description: Deploy application
+runs:
+  using: composite
+  steps:
+    - uses: vendor/deploy-action@v2
+`,
+					},
+				}
+
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeFalse())
+				Expect(result.ShouldBlock).To(BeTrue())
+				Expect(result.Details["errors"]).To(ContainSubstring("uses tag without digest"))
+			})
+
+			It("should pass for action with tag-pinned action with explanation", func() {
+				ctx := &hook.Context{
+					EventType: hook.PreToolUse,
+					ToolName:  hook.Write,
+					ToolInput: hook.ToolInput{
+						FilePath: "/project/.github/actions/deploy/action.yml",
+						Content: `name: Deploy Action
+description: Deploy application
+runs:
+  using: composite
+  steps:
+    # Cannot pin by digest: third-party marketplace action
+    - uses: vendor/deploy-action@v2
+`,
+					},
+				}
+
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeTrue())
+			})
+
+			It("should skip validation for non-action files in .github/actions/", func() {
+				ctx := &hook.Context{
+					EventType: hook.PreToolUse,
+					ToolName:  hook.Write,
+					ToolInput: hook.ToolInput{
+						FilePath: "/project/.github/actions/my-action/README.md",
+						Content:  "# My Action Documentation",
 					},
 				}
 
