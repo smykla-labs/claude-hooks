@@ -36,9 +36,9 @@ var (
 		"test",
 	}
 
-	// Conventional commit format: type(scope): description
+	// Conventional commit format: type(scope): description (scope is mandatory)
 	conventionalCommitRegex = regexp.MustCompile(
-		`^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-zA-Z0-9_\/-]+\))?!?: .+`,
+		`^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)\([a-zA-Z0-9_\/-]+\)!?: .+`,
 	)
 
 	// Infrastructure scope misuse: feat(ci), fix(test), etc.
@@ -131,6 +131,7 @@ func (v *CommitValidator) validateTitle(lines []string) (string, []string) {
 			errors,
 			"❌ Title doesn't follow conventional commits format: type(scope): description",
 		)
+		errors = append(errors, "   Scope is mandatory and must be in parentheses")
 		errors = append(errors, "   Valid types: "+strings.Join(validTypes, ", "))
 		errors = append(errors, fmt.Sprintf("   Current title: '%s'", title))
 	}

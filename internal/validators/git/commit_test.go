@@ -33,7 +33,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -sS -a -m "feat: add new feature"`,
+						Command: `git commit -sS -a -m "feat(api): add new feature"`,
 					},
 				}
 
@@ -46,7 +46,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -s -S -m "fix: resolve bug"`,
+						Command: `git commit -s -S -m "fix(auth): resolve bug"`,
 					},
 				}
 
@@ -59,7 +59,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit --signoff --gpg-sign -m "docs: update readme"`,
+						Command: `git commit --signoff --gpg-sign -m "docs(readme): update readme"`,
 					},
 				}
 
@@ -76,7 +76,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -sS --all -m "feat: update files"`,
+						Command: `git commit -sS --all -m "feat(files): update files"`,
 					},
 				}
 
@@ -91,7 +91,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -S -m "feat: test message"`,
+						Command: `git commit -S -m "feat(test): test message"`,
 					},
 				}
 
@@ -105,7 +105,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -s -m "feat: test message"`,
+						Command: `git commit -s -m "feat(test): test message"`,
 					},
 				}
 
@@ -119,7 +119,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -m "feat: test message"`,
+						Command: `git commit -m "feat(test): test message"`,
 					},
 				}
 
@@ -158,7 +158,7 @@ var _ = Describe("CommitValidator", func() {
 				Expect(result.Passed).To(BeTrue())
 			})
 
-			It("should pass without scope", func() {
+			It("should fail without scope", func() {
 				ctx := &hook.Context{
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
@@ -168,7 +168,8 @@ var _ = Describe("CommitValidator", func() {
 				}
 
 				result := validator.Validate(context.Background(), ctx)
-				Expect(result.Passed).To(BeTrue())
+				Expect(result.Passed).To(BeFalse())
+				Expect(result.Details["errors"]).To(ContainSubstring("Scope is mandatory"))
 			})
 
 			It("should pass with breaking change marker", func() {
@@ -176,7 +177,7 @@ var _ = Describe("CommitValidator", func() {
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -sS -a -m "feat!: remove deprecated API"`,
+						Command: `git commit -sS -a -m "feat(api)!: remove deprecated API"`,
 					},
 				}
 
@@ -501,7 +502,7 @@ See github.com/smykla-labs/claude-hooks/pull/123`
 					EventType: hook.PreToolUse,
 					ToolName:  hook.Bash,
 					ToolInput: hook.ToolInput{
-						Command: `git commit -sS -a -m "feat(api): add claude integration"`,
+						Command: `git commit -sS -a -m "feat(integration): add claude integration"`,
 					},
 				}
 
@@ -683,7 +684,7 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				EventType: hook.PreToolUse,
 				ToolName:  hook.Bash,
 				ToolInput: hook.ToolInput{
-					Command: `git add file.txt && git commit -sS -a -m "feat: add file"`,
+					Command: `git add file.txt && git commit -sS -a -m "feat(file): add file"`,
 				},
 			}
 
@@ -714,7 +715,7 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				EventType: hook.PreToolUse,
 				ToolName:  hook.Bash,
 				ToolInput: hook.ToolInput{
-					Command: `git add file.txt && git commit -sS -m "feat: add file"`,
+					Command: `git add file.txt && git commit -sS -m "feat(file): add file"`,
 				},
 			}
 
@@ -744,7 +745,7 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				EventType: hook.PreToolUse,
 				ToolName:  hook.Bash,
 				ToolInput: hook.ToolInput{
-					Command: `git add -A && git commit -sS -m "chore: update all"`,
+					Command: `git add -A && git commit -sS -m "chore(deps): update all"`,
 				},
 			}
 
@@ -759,7 +760,7 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				EventType: hook.PreToolUse,
 				ToolName:  hook.Bash,
 				ToolInput: hook.ToolInput{
-					Command: `git commit --amend -sS -m "feat: amend commit"`,
+					Command: `git commit --amend -sS -m "feat(api): amend commit"`,
 				},
 			}
 
@@ -772,7 +773,7 @@ Signed-off-by: John Doe <bartek@smykla.com>`
 				EventType: hook.PreToolUse,
 				ToolName:  hook.Bash,
 				ToolInput: hook.ToolInput{
-					Command: `git commit --allow-empty -sS -m "chore: empty commit"`,
+					Command: `git commit --allow-empty -sS -m "chore(deps): empty commit"`,
 				},
 			}
 
