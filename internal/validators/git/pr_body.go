@@ -19,6 +19,12 @@ var (
 	changelogSkipRegex   = regexp.MustCompile(`(?m)^>\s*Changelog:\s*skip`)
 	changelogCustomRegex = regexp.MustCompile(`(?m)^>\s*Changelog:\s*(.+)`)
 	formalWordsRegex     = regexp.MustCompile(`(?i)\b(utilize|leverage|facilitate|implement)\b`)
+	htmlCommentRegex     = regexp.MustCompile(`<!--[\s\S]*?-->`)
+
+	// emptyDocsPatterns matches common placeholder values that indicate empty documentation
+	emptyDocsPatterns = regexp.MustCompile(
+		`(?i)^\s*(n/?a|none|nothing|empty|-|—|–|\.{2,}|tbd|todo)\s*$`,
+	)
 )
 
 // PRBodyValidationResult contains the result of PR body validation
@@ -45,6 +51,9 @@ func validatePRBody(body, prType string, requireChangelog bool) PRBodyValidation
 
 	// Check for required sections
 	checkRequiredSections(body, &result)
+
+	// Check changelog placement (must not be before ## Motivation)
+	checkChangelogPlacement(body, &result)
 
 	// Validate changelog handling
 	validateChangelog(body, prType, requireChangelog, &result)
@@ -80,9 +89,33 @@ func checkRequiredSections(body string, result *PRBodyValidationResult) {
 	}
 
 	if !strings.Contains(body, supportingDocsHeader) {
-		result.Errors = append(
-			result.Errors,
+		result.Warnings = append(
+			result.Warnings,
 			"PR body missing '## Supporting documentation' section",
+			"This section can be omitted only when it would result in N/A",
+		)
+	}
+}
+
+// checkChangelogPlacement validates that > Changelog: is not placed before ## Motivation
+func checkChangelogPlacement(body string, result *PRBodyValidationResult) {
+	motivationIdx := strings.Index(body, motivationHeader)
+	changelogMatch := changelogCustomRegex.FindStringIndex(body)
+
+	if changelogMatch == nil {
+		return
+	}
+
+	// If motivation header doesn't exist, we already report that as an error
+	if motivationIdx == -1 {
+		return
+	}
+
+	// Changelog line should not appear before Motivation
+	if changelogMatch[0] < motivationIdx {
+		result.Errors = append(result.Errors,
+			"'> Changelog:' line must not appear before '## Motivation' section",
+			"Move the changelog line to the end of the PR body",
 		)
 	}
 }
@@ -175,36 +208,66 @@ func checkLineBreaks(body string, result *PRBodyValidationResult) {
 	}
 }
 
-// checkSupportingDocs checks if Supporting documentation section is empty or N/A
+// checkSupportingDocs checks if Supporting documentation section has N/A or empty placeholder values
 func checkSupportingDocs(body string, result *PRBodyValidationResult) {
 	idx := strings.Index(body, supportingDocsHeader)
 	if idx == -1 {
 		return
 	}
 
-	afterHeader := body[idx+len(supportingDocsHeader):]
-	lines := strings.Split(afterHeader, "\n")
+	// Extract the section content
+	sectionContent := extractSectionContent(body[idx+len(supportingDocsHeader):])
 
-	// Check first few non-empty lines after header
-	isEmpty := true
+	// Strip HTML comments from the content
+	sectionContent = htmlCommentRegex.ReplaceAllString(sectionContent, "")
 
-	for i := 0; i < len(lines) && i < 5; i++ {
-		trimmed := strings.TrimSpace(lines[i])
-		if trimmed != "" &&
-			!strings.HasPrefix(trimmed, "##") &&
-			!strings.EqualFold(trimmed, "n/a") &&
-			!strings.EqualFold(trimmed, "none") {
-			isEmpty = false
-			break
+	// Check each non-empty line for N/A or empty placeholder patterns
+	for line := range strings.SplitSeq(sectionContent, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+
+		if emptyDocsPatterns.MatchString(trimmed) {
+			result.Errors = append(
+				result.Errors,
+				"Supporting documentation section contains placeholder value: "+trimmed,
+				"Remove the entire '## Supporting documentation' section if there's no supporting documentation",
+			)
+
+			return
 		}
 	}
+}
 
-	if isEmpty {
-		result.Warnings = append(result.Warnings,
-			"Supporting documentation section is empty or N/A",
-			"Consider removing the section entirely if there's no supporting documentation",
-		)
+// extractSectionContent extracts the content of a section until the next section boundary
+// Boundaries are: next ## header, ---, or > Changelog: line
+func extractSectionContent(content string) string {
+	lines := strings.Split(content, "\n")
+	result := make([]string, 0, len(lines))
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		// Stop at next header
+		if strings.HasPrefix(trimmed, "##") {
+			break
+		}
+
+		// Stop at horizontal rule
+		if trimmed == "---" || trimmed == "***" || trimmed == "___" {
+			break
+		}
+
+		// Stop at changelog line
+		if strings.HasPrefix(trimmed, "> Changelog:") {
+			break
+		}
+
+		result = append(result, line)
 	}
+
+	return strings.Join(result, "\n")
 }
 
 // ValidatePRBody validates PR body with default configuration (exported for testing)

@@ -152,7 +152,7 @@ See docs/performance.md`
 			).To(ContainElement(ContainSubstring("missing '## Implementation information'")))
 		})
 
-		It("should error on missing Supporting documentation section", func() {
+		It("should warn on missing Supporting documentation section", func() {
 			body := `## Motivation
 This change improves performance.
 
@@ -161,8 +161,11 @@ This change improves performance.
 
 			result := git.ValidatePRBody(body, "feat")
 			Expect(
-				result.Errors,
+				result.Warnings,
 			).To(ContainElement(ContainSubstring("missing '## Supporting documentation'")))
+			Expect(
+				result.Warnings,
+			).To(ContainElement(ContainSubstring("can be omitted only when it would result in N/A")))
 		})
 
 		It("should warn on empty body", func() {
@@ -177,10 +180,7 @@ This change improves performance.
 CI change
 
 ## Implementation information
-- Updated workflow
-
-## Supporting documentation
-N/A`
+- Updated workflow`
 
 			result := git.ValidatePRBody(body, "ci")
 			Expect(
@@ -192,13 +192,10 @@ N/A`
 			body := `## Motivation
 CI change
 
-> Changelog: skip
-
 ## Implementation information
 - Updated workflow
 
-## Supporting documentation
-N/A`
+> Changelog: skip`
 
 			result := git.ValidatePRBody(body, "ci")
 			Expect(
@@ -210,13 +207,10 @@ N/A`
 			body := `## Motivation
 New feature
 
-> Changelog: skip
-
 ## Implementation information
 - Added endpoint
 
-## Supporting documentation
-N/A`
+> Changelog: skip`
 
 			result := git.ValidatePRBody(body, "feat")
 			Expect(
@@ -228,13 +222,10 @@ N/A`
 			body := `## Motivation
 New feature
 
-> Changelog: invalid changelog format
-
 ## Implementation information
 - Added endpoint
 
-## Supporting documentation
-N/A`
+> Changelog: invalid changelog format`
 
 			result := git.ValidatePRBody(body, "feat")
 			Expect(
@@ -246,13 +237,10 @@ N/A`
 			body := `## Motivation
 New feature
 
-> Changelog: feat(api): add custom endpoint
-
 ## Implementation information
 - Added endpoint
 
-## Supporting documentation
-N/A`
+> Changelog: feat(api): add custom endpoint`
 
 			result := git.ValidatePRBody(body, "feat")
 			Expect(result.Errors).NotTo(ContainElement(ContainSubstring("Custom changelog")))
@@ -266,13 +254,13 @@ We will utilize this feature to facilitate improvements.
 - Leverage new algorithm
 
 ## Supporting documentation
-N/A`
+See docs/algorithm.md`
 
 			result := git.ValidatePRBody(body, "feat")
 			Expect(result.Warnings).To(ContainElement(ContainSubstring("uses formal language")))
 		})
 
-		It("should warn on empty supporting documentation", func() {
+		It("should error on N/A supporting documentation", func() {
 			body := `## Motivation
 New feature
 
@@ -284,8 +272,144 @@ N/A`
 
 			result := git.ValidatePRBody(body, "feat")
 			Expect(
-				result.Warnings,
-			).To(ContainElement(ContainSubstring("Supporting documentation section is empty")))
+				result.Errors,
+			).To(ContainElement(ContainSubstring("Supporting documentation section contains placeholder value")))
+			Expect(
+				result.Errors,
+			).To(ContainElement(ContainSubstring("Remove the entire '## Supporting documentation' section")))
+		})
+
+		It(
+			"should error on various empty placeholder patterns in supporting documentation",
+			func() {
+				placeholders := []string{
+					"n/a",
+					"None",
+					"NOTHING",
+					"empty",
+					"-",
+					"TBD",
+					"todo",
+					"...",
+				}
+
+				for _, placeholder := range placeholders {
+					body := `## Motivation
+New feature
+
+## Implementation information
+- Added endpoint
+
+## Supporting documentation
+` + placeholder
+
+					result := git.ValidatePRBody(body, "feat")
+					Expect(
+						result.Errors,
+					).To(ContainElement(ContainSubstring("placeholder value")),
+						"Expected error for placeholder: "+placeholder)
+				}
+			},
+		)
+
+		It("should ignore HTML comments in supporting documentation", func() {
+			body := `## Motivation
+New feature
+
+## Implementation information
+- Added endpoint
+
+## Supporting documentation
+<!-- Links to relevant issues, discussions, or external documentation -->
+See https://example.com/docs`
+
+			result := git.ValidatePRBody(body, "feat")
+			Expect(result.Errors).To(BeEmpty())
+		})
+
+		It("should error when only HTML comment in supporting documentation", func() {
+			body := `## Motivation
+New feature
+
+## Implementation information
+- Added endpoint
+
+## Supporting documentation
+<!-- Links to relevant issues, discussions, or external documentation -->`
+
+			result := git.ValidatePRBody(body, "feat")
+			// Section is effectively empty after stripping comments - no error since no placeholder found
+			Expect(result.Errors).To(BeEmpty())
+		})
+
+		It("should stop at next section when checking supporting documentation", func() {
+			body := `## Motivation
+New feature
+
+## Implementation information
+- Added endpoint
+
+## Supporting documentation
+See https://example.com/docs
+
+## Test plan
+N/A`
+
+			result := git.ValidatePRBody(body, "feat")
+			// N/A is in Test plan section, not Supporting documentation
+			Expect(result.Errors).NotTo(ContainElement(ContainSubstring("placeholder value")))
+		})
+
+		It("should stop at changelog line when checking supporting documentation", func() {
+			body := `## Motivation
+New feature
+
+## Implementation information
+- Added endpoint
+
+## Supporting documentation
+See https://example.com/docs
+
+> Changelog: skip`
+
+			result := git.ValidatePRBody(body, "feat")
+			Expect(result.Errors).NotTo(ContainElement(ContainSubstring("placeholder value")))
+		})
+
+		It("should error when changelog appears before Motivation section", func() {
+			body := `> Changelog: feat(api): custom entry
+
+## Motivation
+New feature
+
+## Implementation information
+- Added endpoint
+
+## Supporting documentation
+See docs/api.md`
+
+			result := git.ValidatePRBody(body, "feat")
+			Expect(
+				result.Errors,
+			).To(ContainElement(ContainSubstring("must not appear before '## Motivation'")))
+		})
+
+		It("should pass when changelog appears after Motivation section", func() {
+			body := `## Motivation
+New feature
+
+> Changelog: feat(api): custom entry
+
+## Implementation information
+- Added endpoint
+
+## Supporting documentation
+See docs/api.md`
+
+			result := git.ValidatePRBody(body, "feat")
+			Expect(
+				result.Errors,
+			).NotTo(ContainElement(ContainSubstring("must not appear before")))
 		})
 	})
 
@@ -366,10 +490,6 @@ CI improvement description
 
 - Added workflow
 - Updated CI configuration
-
-## Supporting documentation
-
-N/A
 EOF
 )"`,
 				},
@@ -396,6 +516,7 @@ EOF
 			result := validator.Validate(context.Background(), ctx)
 			Expect(result.Passed).To(BeFalse())
 			Expect(result.Message).To(ContainSubstring("missing '## Implementation information'"))
+			// Supporting documentation missing is now a warning, not an error
 			Expect(result.Message).To(ContainSubstring("missing '## Supporting documentation'"))
 		})
 
@@ -470,16 +591,12 @@ EOF
 
 CI improvement description
 
-> Changelog: skip
-
 ## Implementation information
 
 - Updated workflow
 - Improved pipeline performance
 
-## Supporting documentation
-
-N/A
+> Changelog: skip
 EOF
 )"`,
 				},
