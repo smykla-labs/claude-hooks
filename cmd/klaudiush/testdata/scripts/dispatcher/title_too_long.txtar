@@ -1,0 +1,26 @@
+# Test: Commit title exceeding 50 characters is blocked
+# This tests that overly long commit titles are caught
+
+exec git init --initial-branch=main
+exec git config user.email "test@test.com"
+exec git config user.name "Test User"
+
+cp file.go staged.go
+exec git add staged.go
+
+stdin input.json
+! exec klaudiush --hook-type PreToolUse
+stderr 'Validation Failed'
+
+-- file.go --
+package main
+
+func main() {}
+
+-- input.json --
+{
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "git commit -sS -m 'feat(api): this is a very long commit message title that exceeds the fifty character limit'"
+  }
+}

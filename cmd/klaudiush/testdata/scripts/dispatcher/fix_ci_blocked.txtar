@@ -1,0 +1,26 @@
+# Test: fix(ci) commit type is blocked
+# This tests that fix(ci) should be ci(...) instead
+
+exec git init --initial-branch=main
+exec git config user.email "test@test.com"
+exec git config user.name "Test User"
+
+cp file.go staged.go
+exec git add staged.go
+
+stdin input.json
+! exec klaudiush --hook-type PreToolUse
+stderr 'Validation Failed'
+
+-- file.go --
+package main
+
+func main() {}
+
+-- input.json --
+{
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "git commit -sS -m 'fix(ci): update workflow'"
+  }
+}

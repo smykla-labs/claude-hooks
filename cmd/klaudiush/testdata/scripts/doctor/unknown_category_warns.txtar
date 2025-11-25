@@ -1,0 +1,6 @@
+# Test: Unknown category shows warning
+# This tests that unknown categories produce a warning
+# Note: doctor may fail due to missing hook registration in test env, but we still check the warning
+
+! exec klaudiush doctor --category unknown
+stderr 'unknown category'

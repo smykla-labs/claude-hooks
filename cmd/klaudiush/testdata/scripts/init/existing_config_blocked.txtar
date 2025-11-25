@@ -1,0 +1,12 @@
+# Test: Init fails when config already exists without --force
+# This tests that existing config protection works
+
+mkdir .klaudiush
+cp config.toml .klaudiush/config.toml
+
+! exec klaudiush init --no-tui
+stderr 'already exists'
+stderr 'force'
+
+-- config.toml --
+# Existing configuration

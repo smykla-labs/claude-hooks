@@ -1,0 +1,8 @@
+# Test: Doctor command shows help correctly
+# This tests that the doctor command help output is correct
+
+exec klaudiush doctor --help
+stdout 'Diagnose klaudiush setup'
+stdout 'verbose'
+stdout 'fix'
+stdout 'category'

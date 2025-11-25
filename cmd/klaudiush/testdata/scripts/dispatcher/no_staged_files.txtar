@@ -1,0 +1,18 @@
+# Test: Commit without staged files is blocked
+# This tests that commits without staged files are caught
+
+exec git init --initial-branch=main
+exec git config user.email "test@test.com"
+exec git config user.name "Test User"
+
+stdin input.json
+! exec klaudiush --hook-type PreToolUse
+stderr 'Validation Failed'
+
+-- input.json --
+{
+  "tool_name": "Bash",
+  "tool_input": {
+    "command": "git commit -sS -m 'feat(api): add endpoint'"
+  }
+}

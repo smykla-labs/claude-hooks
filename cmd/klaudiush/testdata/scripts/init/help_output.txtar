@@ -1,0 +1,8 @@
+# Test: Init command shows help correctly
+# This tests that the init command help output is correct
+
+exec klaudiush init --help
+stdout 'Initialize klaudiush configuration'
+stdout 'global'
+stdout 'force'
+stdout 'no-tui'

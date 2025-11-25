@@ -1,0 +1,15 @@
+# Test: Non-Bash tools pass through without validation
+# This tests that Write tool invocations are not blocked
+
+stdin input.json
+exec klaudiush --hook-type PreToolUse
+! stderr .
+
+-- input.json --
+{
+  "tool_name": "Write",
+  "tool_input": {
+    "file_path": "/tmp/test.txt",
+    "content": "hello world"
+  }
+}
