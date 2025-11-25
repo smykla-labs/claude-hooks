@@ -3,18 +3,17 @@
 
 min_version: 2.0.0
 
-# Pre-commit hook - runs on staged files only
+# Pre-commit hook - runs on new changes only
 pre-commit:
   parallel: true
   commands:
     lint:
       glob: "*.go"
-      run: golangci-lint run {staged_files}
-      stage_fixed: true
+      run: golangci-lint run --new-from-rev=HEAD ./...
 
     test:
       glob: "*.go"
-      run: go test -v -race -cover -short {packages}
+      run: go test -v -race -cover -short ./...
 
 # Pre-push hook - runs full validation
 pre-push:
