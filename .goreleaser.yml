@@ -54,6 +54,24 @@ checksum:
   name_template: checksums.txt
   algorithm: sha256
 
+# GPG signing for checksums and archives
+signs:
+  - artifacts: checksum
+    args:
+      - --batch
+      - --local-user
+      - '{{ .Env.GPG_FINGERPRINT }}'
+      - --output
+      - '${signature}'
+      - --detach-sign
+      - '${artifact}'
+
+# Software Bill of Materials (SBOM)
+sboms:
+  - artifacts: archive
+    documents:
+      - '${artifact}.sbom.json'
+
 snapshot:
   version_template: '{{ incpatch .Version }}-next'
 
@@ -112,8 +130,33 @@ release:
     ### Manual download
     Download the appropriate archive for your platform from the assets below, extract, and add to your PATH.
 
+    ## Verification
+
     ### Checksums
-    SHA256 checksums are available in `checksums.txt`.
+    SHA256 checksums are available in `checksums.txt`. Verify downloads:
+    ```bash
+    sha256sum -c checksums.txt 2>&1 | grep OK
+    ```
+
+    ### GPG Signatures
+    All checksums are signed with GPG. Verify authenticity:
+    ```bash
+    # Import public key (first time only)
+    gpg --keyserver keys.openpgp.org --recv-keys C1F468CD7B3DB219CFFEC99821DC3AC33C4EF676
+
+    # Verify signature
+    gpg --verify checksums.txt.sig checksums.txt
+    ```
+
+    ### SLSA Provenance
+    Build provenance attestations are available via GitHub's attestation API:
+    ```bash
+    gh attestation verify klaudiush_{{ .Version }}_linux_amd64.tar.gz \
+      --owner smykla-labs
+    ```
+
+    ### SBOM
+    Software Bill of Materials (SBOM) in CycloneDX JSON format is included with each archive (`*.sbom.json`).
 
     ---
     **Full Changelog**: https://github.com/smykla-labs/klaudiush/compare/{{ .PreviousTag }}...{{ .Tag }}
