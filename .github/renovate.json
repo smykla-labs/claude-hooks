@@ -1,0 +1,46 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    "helpers:pinGitHubActionDigests",
+    ":semanticCommits",
+    ":dependencyDashboard"
+  ],
+  "labels": ["dependencies"],
+  "automerge": false,
+  "schedule": ["before 4am on Monday"],
+  "packageRules": [
+    {
+      "description": "Automerge patch updates for GitHub Actions",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "Automerge minor Go dependency updates",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchDepTypes": ["indirect"],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "Group Go tool dependencies",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["require"],
+      "matchPackagePatterns": ["^golang.org/x/tools"],
+      "groupName": "Go tooling"
+    },
+    {
+      "description": "Pin GitHub Action digests",
+      "matchManagers": ["github-actions"],
+      "pinDigests": true
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "automerge": true
+  }
+}
