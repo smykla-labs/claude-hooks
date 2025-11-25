@@ -27,6 +27,7 @@ func validatePRTitle(
 	title string,
 	maxLength int,
 	checkConventionalCommits bool,
+	allowUnlimitedRevertTitle bool,
 	validTypes []string,
 ) PRTitleValidationResult {
 	if title == "" {
@@ -36,8 +37,10 @@ func validatePRTitle(
 		}
 	}
 
-	// Check title length
-	if len(title) > maxLength {
+	// Check title length (skip for revert titles if configured)
+	isRevert := isRevertCommit(title)
+
+	if len(title) > maxLength && (!allowUnlimitedRevertTitle || !isRevert) {
 		return PRTitleValidationResult{
 			Valid: false,
 			ErrorMessage: fmt.Sprintf(
@@ -47,12 +50,14 @@ func validatePRTitle(
 			Details: []string{
 				fmt.Sprintf("Current length: %d", len(title)),
 				fmt.Sprintf("Title: '%s'", title),
+				"Note: Revert titles (Revert \"...\") are exempt from this limit",
 			},
 		}
 	}
 
 	// Check semantic commit format (if enabled)
-	if checkConventionalCommits {
+	// Skip for revert titles since they use a different format
+	if checkConventionalCommits && !isRevert {
 		validTypesPattern := strings.Join(validTypes, "|")
 		semanticCommitRegex := regexp.MustCompile(
 			fmt.Sprintf(`^(%s)(\([a-zA-Z0-9_\/-]+\))?!?: .+`, validTypesPattern),
@@ -66,6 +71,7 @@ func validatePRTitle(
 					fmt.Sprintf("Current: '%s'", title),
 					"Expected: type(scope): description",
 					"Valid types: " + strings.Join(validTypes, ", "),
+					"Alternative: Revert \"original PR title\"",
 				},
 			}
 		}
@@ -114,7 +120,7 @@ func extractPRType(title string, validTypes []string) string {
 //
 //nolint:revive // Exported for testing, intentionally similar to internal function
 func ValidatePRTitle(title string) PRTitleValidationResult {
-	return validatePRTitle(title, defaultPRTitleMaxLength, true, defaultValidTypes)
+	return validatePRTitle(title, defaultPRTitleMaxLength, true, true, defaultValidTypes)
 }
 
 // ExtractPRType extracts the type with default valid types (exported for testing)

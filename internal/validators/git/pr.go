@@ -77,6 +77,15 @@ func (v *PRValidator) isTitleConventionalCommitsEnabled() bool {
 	return true // default: enabled
 }
 
+// shouldAllowUnlimitedRevertTitle returns whether revert PRs are exempt from title length limits
+func (v *PRValidator) shouldAllowUnlimitedRevertTitle() bool {
+	if v.config != nil && v.config.AllowUnlimitedRevertTitle != nil {
+		return *v.config.AllowUnlimitedRevertTitle
+	}
+
+	return true // default: allow unlimited revert title length
+}
+
 // getValidTypes returns the list of valid commit types for PR titles
 func (v *PRValidator) getValidTypes() []string {
 	if v.config != nil && len(v.config.ValidTypes) > 0 {
@@ -298,8 +307,16 @@ func (v *PRValidator) validatePRTitleData(title string, allErrors, allWarnings *
 	validTypes := v.getValidTypes()
 	titleMaxLength := v.getTitleMaxLength()
 	checkConventionalCommits := v.isTitleConventionalCommitsEnabled()
+	allowUnlimitedRevertTitle := v.shouldAllowUnlimitedRevertTitle()
 
-	titleResult := validatePRTitle(title, titleMaxLength, checkConventionalCommits, validTypes)
+	titleResult := validatePRTitle(
+		title,
+		titleMaxLength,
+		checkConventionalCommits,
+		allowUnlimitedRevertTitle,
+		validTypes,
+	)
+
 	if !titleResult.Valid {
 		*allErrors = append(*allErrors, titleResult.ErrorMessage)
 		*allErrors = append(*allErrors, titleResult.Details...)

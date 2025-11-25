@@ -9,6 +9,7 @@ import (
 
 	gitpkg "github.com/smykla-labs/klaudiush/internal/git"
 	"github.com/smykla-labs/klaudiush/internal/validators/git"
+	"github.com/smykla-labs/klaudiush/pkg/config"
 	"github.com/smykla-labs/klaudiush/pkg/hook"
 	"github.com/smykla-labs/klaudiush/pkg/logger"
 )
@@ -357,7 +358,7 @@ var _ = Describe("CommitValidator", func() {
 				Expect(result.Passed).To(BeTrue())
 			})
 
-			It("should fail with revert title over 50 characters", func() {
+			It("should pass with revert title over 50 characters (unlimited by default)", func() {
 				ctx := &hook.Context{
 					EventType: hook.EventTypePreToolUse,
 					ToolName:  hook.ToolTypeBash,
@@ -367,9 +368,36 @@ var _ = Describe("CommitValidator", func() {
 				}
 
 				result := validator.Validate(context.Background(), ctx)
-				Expect(result.Passed).To(BeFalse())
-				Expect(result.Details["errors"]).To(ContainSubstring("Title exceeds 50 characters"))
+				Expect(result.Passed).To(BeTrue())
 			})
+
+			It(
+				"should fail with revert title over 50 characters when unlimited is disabled",
+				func() {
+					allowUnlimited := false
+					cfg := &config.CommitValidatorConfig{
+						Message: &config.CommitMessageConfig{
+							AllowUnlimitedRevertTitle: &allowUnlimited,
+						},
+					}
+
+					strictValidator := git.NewCommitValidator(log, fakeGit, cfg)
+
+					ctx := &hook.Context{
+						EventType: hook.EventTypePreToolUse,
+						ToolName:  hook.ToolTypeBash,
+						ToolInput: hook.ToolInput{
+							Command: `git commit -sS -a -m 'Revert "feat(api): this is a very long commit message title"'`,
+						},
+					}
+
+					result := strictValidator.Validate(context.Background(), ctx)
+					Expect(result.Passed).To(BeFalse())
+					Expect(
+						result.Details["errors"],
+					).To(ContainSubstring("Title exceeds 50 characters"))
+				},
+			)
 
 			It("should fail without quotes around original message", func() {
 				ctx := &hook.Context{

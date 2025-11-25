@@ -48,6 +48,13 @@ type CommitMessageConfig struct {
 	// Default: 50
 	TitleMaxLength *int `json:"title_max_length,omitempty" koanf:"title_max_length" toml:"title_max_length"`
 
+	// AllowUnlimitedRevertTitle skips title length validation for revert commits.
+	// Revert commits use the format: Revert "original commit title"
+	// Since the original title may already be at max length, adding the "Revert" prefix
+	// would cause the revert commit to exceed the limit.
+	// Default: true
+	AllowUnlimitedRevertTitle *bool `json:"allow_unlimited_revert_title,omitempty" koanf:"allow_unlimited_revert_title" toml:"allow_unlimited_revert_title"`
+
 	// BodyMaxLineLength is the maximum allowed length for body lines.
 	// Default: 72
 	BodyMaxLineLength *int `json:"body_max_line_length,omitempty" koanf:"body_max_line_length" toml:"body_max_line_length"`
@@ -122,6 +129,13 @@ type PRValidatorConfig struct {
 	// TitleMaxLength is the maximum allowed length for PR titles.
 	// Default: 50
 	TitleMaxLength *int `json:"title_max_length,omitempty" koanf:"title_max_length" toml:"title_max_length"`
+
+	// AllowUnlimitedRevertTitle skips title length validation for revert PRs.
+	// Revert PRs use the format: Revert "original PR title"
+	// Since the original title may already be at max length, adding the "Revert" prefix
+	// would cause the revert PR title to exceed the limit.
+	// Default: true
+	AllowUnlimitedRevertTitle *bool `json:"allow_unlimited_revert_title,omitempty" koanf:"allow_unlimited_revert_title" toml:"allow_unlimited_revert_title"`
 
 	// TitleConventionalCommits enforces conventional commit format for PR titles.
 	// Default: true

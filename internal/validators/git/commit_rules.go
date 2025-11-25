@@ -17,7 +17,8 @@ type CommitRule interface {
 
 // TitleLengthRule validates the commit title length.
 type TitleLengthRule struct {
-	MaxLength int
+	MaxLength                 int
+	AllowUnlimitedRevertTitle bool
 }
 
 func (*TitleLengthRule) Name() string {
@@ -25,6 +26,11 @@ func (*TitleLengthRule) Name() string {
 }
 
 func (r *TitleLengthRule) Validate(commit *ParsedCommit, _ string) []string {
+	// Skip length validation for revert commits if configured
+	if r.AllowUnlimitedRevertTitle && isRevertCommit(commit.Title) {
+		return nil
+	}
+
 	if len(commit.Title) <= r.MaxLength {
 		return nil
 	}
@@ -36,6 +42,7 @@ func (r *TitleLengthRule) Validate(commit *ParsedCommit, _ string) []string {
 			len(commit.Title),
 			commit.Title,
 		),
+		"   Note: Revert commits (Revert \"...\") are exempt from this limit",
 	}
 }
 
@@ -65,6 +72,7 @@ func (r *ConventionalFormatRule) Validate(commit *ParsedCommit, _ string) []stri
 		}
 
 		errors = append(errors, "   Valid types: "+strings.Join(r.ValidTypes, ", "))
+		errors = append(errors, "   Alternative: Revert \"original commit title\"")
 		errors = append(errors, fmt.Sprintf("   Current title: '%s'", commit.Title))
 
 		return errors
@@ -76,6 +84,7 @@ func (r *ConventionalFormatRule) Validate(commit *ParsedCommit, _ string) []stri
 			"❌ Title doesn't follow conventional commits format: type(scope): description",
 			"   Scope is mandatory and must be in parentheses",
 			"   Valid types: " + strings.Join(r.ValidTypes, ", "),
+			"   Alternative: Revert \"original commit title\"",
 			fmt.Sprintf("   Current title: '%s'", commit.Title),
 		}
 	}

@@ -91,7 +91,8 @@ func (v *CommitValidator) buildRules() []CommitRule {
 
 	// Title length rule
 	rules = append(rules, &TitleLengthRule{
-		MaxLength: v.getTitleMaxLength(),
+		MaxLength:                 v.getTitleMaxLength(),
+		AllowUnlimitedRevertTitle: v.shouldAllowUnlimitedRevertTitle(),
 	})
 
 	// Conventional commit format rule
@@ -192,6 +193,16 @@ func (v *CommitValidator) getTitleMaxLength() int {
 	}
 
 	return defaultMaxTitleLength
+}
+
+// shouldAllowUnlimitedRevertTitle returns whether revert commits are exempt from title length limits.
+func (v *CommitValidator) shouldAllowUnlimitedRevertTitle() bool {
+	if v.config != nil && v.config.Message != nil &&
+		v.config.Message.AllowUnlimitedRevertTitle != nil {
+		return *v.config.Message.AllowUnlimitedRevertTitle
+	}
+
+	return true // Default: allow unlimited revert title length
 }
 
 // getBodyMaxLineLength returns the max body line length from config, or default.
