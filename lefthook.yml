@@ -1,53 +1,28 @@
 # Lefthook configuration for klaudiush
-# https://github.com/evilmartians/lefthook/blob/master/docs/configuration.md
+# https://lefthook.dev/configuration
 
-# Minimum lefthook version
 min_version: 2.0.0
 
-# Pre-commit hook
+# Pre-commit hook - runs on staged files only
 pre-commit:
   parallel: true
   commands:
-    # Lint staged files
     lint:
       glob: "*.go"
-      run: |
-        CHANGED_PACKAGES=$(git diff --cached --name-only --diff-filter=ACM | \
-          grep '\.go$' | xargs -n1 dirname | sort -u | \
-          sed 's|^|./|' | sed 's|$|/...|' | tr '\n' ' ')
-        if [ -n "$CHANGED_PACKAGES" ]; then
-          echo "Linting changed packages..."
-          golangci-lint run $CHANGED_PACKAGES
-        else
-          echo "No Go files to lint"
-        fi
-      fail_text: "Linting failed. Fix the issues or use 'git commit --no-verify' to skip."
+      run: golangci-lint run {staged_files}
+      stage_fixed: true
 
-    # Test staged files
     test:
       glob: "*.go"
-      run: |
-        CHANGED_PACKAGES=$(git diff --cached --name-only --diff-filter=ACM | \
-          grep '\.go$' | xargs -n1 dirname | sort -u | \
-          sed 's|^|./|' | sed 's|$|/...|' | tr '\n' ' ')
-        if [ -n "$CHANGED_PACKAGES" ]; then
-          echo "Testing changed packages..."
-          go test -v -race -cover -short $CHANGED_PACKAGES
-        else
-          echo "No Go files changed, skipping tests"
-        fi
-      fail_text: "Tests failed. Fix the failures or use 'git commit --no-verify' to skip."
+      run: go test -v -race -cover -short {packages}
 
-# Pre-push hook
+# Pre-push hook - runs full validation
 pre-push:
   parallel: true
   commands:
-    # Full lint
     lint:
       run: golangci-lint run
-      fail_text: "Full lint failed. Fix the issues or use 'git push --no-verify' to skip."
 
-    # Full test suite
     test:
       run: go test -v -race -cover ./...
-      fail_text: "Test suite failed. Fix the failures or use 'git push --no-verify' to skip."
+
