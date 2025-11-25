@@ -1077,4 +1077,106 @@ Signed-off-by: Test User <test@example.com>`
 			Expect(result.Passed).To(BeTrue())
 		})
 	})
+
+	Describe("Global options (-C flag)", func() {
+		It("should validate commit with -C directory option", func() {
+			ctx := &hook.Context{
+				EventType: hook.EventTypePreToolUse,
+				ToolName:  hook.ToolTypeBash,
+				ToolInput: hook.ToolInput{
+					Command: `git -C /path/to/repo commit -sS -a -m "feat(api): add endpoint"`,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeTrue())
+		})
+
+		It("should fail invalid commit message with -C directory option", func() {
+			ctx := &hook.Context{
+				EventType: hook.EventTypePreToolUse,
+				ToolName:  hook.ToolTypeBash,
+				ToolInput: hook.ToolInput{
+					Command: `git -C /path/to/repo commit -sS -a -m "add new feature"`,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeFalse())
+			Expect(
+				result.Details["errors"],
+			).To(ContainSubstring("doesn't follow conventional commits format"))
+		})
+
+		It("should fail commit with long title and -C option", func() {
+			ctx := &hook.Context{
+				EventType: hook.EventTypePreToolUse,
+				ToolName:  hook.ToolTypeBash,
+				ToolInput: hook.ToolInput{
+					Command: `git -C /path/to/repo commit -sS -a -m "fix(mdtable): prevent false positives in spacing detection"`,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeFalse())
+			Expect(result.Details["errors"]).To(ContainSubstring("Title exceeds 50 characters"))
+		})
+
+		It("should validate commit in chained command with -C option", func() {
+			mockGit.StagedFiles = []string{}
+
+			ctx := &hook.Context{
+				EventType: hook.EventTypePreToolUse,
+				ToolName:  hook.ToolTypeBash,
+				ToolInput: hook.ToolInput{
+					Command: `git -C /path/to/repo add file.txt && git -C /path/to/repo commit -sS -m "feat(file): add new file"`,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeTrue())
+		})
+
+		It("should detect git add with -C option in chain", func() {
+			mockGit.StagedFiles = []string{}
+
+			ctx := &hook.Context{
+				EventType: hook.EventTypePreToolUse,
+				ToolName:  hook.ToolTypeBash,
+				ToolInput: hook.ToolInput{
+					Command: `git -C /some/path add . && git -C /some/path commit -sS -m "chore(all): stage all"`,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeTrue())
+		})
+
+		It("should fail missing flags with -C option", func() {
+			ctx := &hook.Context{
+				EventType: hook.EventTypePreToolUse,
+				ToolName:  hook.ToolTypeBash,
+				ToolInput: hook.ToolInput{
+					Command: `git -C /path/to/repo commit -m "feat(api): add endpoint"`,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeFalse())
+			Expect(result.Message).To(ContainSubstring("Git commit missing required flags"))
+		})
+
+		It("should handle multiple global options", func() {
+			ctx := &hook.Context{
+				EventType: hook.EventTypePreToolUse,
+				ToolName:  hook.ToolTypeBash,
+				ToolInput: hook.ToolInput{
+					Command: `git -C /path/to/repo --no-pager commit -sS -a -m "feat(api): add endpoint"`,
+				},
+			}
+
+			result := validator.Validate(context.Background(), ctx)
+			Expect(result.Passed).To(BeTrue())
+		})
+	})
 })

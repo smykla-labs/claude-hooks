@@ -71,15 +71,20 @@ func (v *CommitValidator) Validate(_ context.Context, hookCtx *hook.Context) *va
 
 	// Find and validate git commit commands
 	for _, cmd := range result.Commands {
-		if !v.isGitCommitCommand(cmd) {
+		if cmd.Name != gitCommand {
 			continue
 		}
 
-		// Parse git command for flags and message
+		// Parse git command to get the subcommand (handles global options like -C)
 		gitCmd, err := parser.ParseGitCommand(cmd)
 		if err != nil {
-			log.Error("Failed to parse git command", "error", err)
-			return validator.Warn(fmt.Sprintf("Failed to parse git command: %v", err))
+			log.Debug("Failed to parse git command", "error", err)
+			continue
+		}
+
+		// Check if this is a commit command
+		if gitCmd.Subcommand != commitSubcommand {
+			continue
 		}
 
 		// Validate the git commit command
@@ -89,11 +94,6 @@ func (v *CommitValidator) Validate(_ context.Context, hookCtx *hook.Context) *va
 	log.Debug("No git commit commands found")
 
 	return validator.Pass()
-}
-
-// isGitCommitCommand checks if a command is a git commit command
-func (*CommitValidator) isGitCommitCommand(cmd parser.Command) bool {
-	return cmd.Name == gitCommand && len(cmd.Args) > 0 && cmd.Args[0] == commitSubcommand
 }
 
 // validateGitCommit validates a single git commit command
@@ -256,7 +256,17 @@ func (v *CommitValidator) getStatusCounts() (modified, untracked int) {
 // so we shouldn't check the staging area.
 func (*CommitValidator) hasGitAddInChain(commands []parser.Command) bool {
 	for _, cmd := range commands {
-		if cmd.Name == gitCommand && len(cmd.Args) > 0 && cmd.Args[0] == addSubcommand {
+		if cmd.Name != gitCommand {
+			continue
+		}
+
+		// Parse git command to get the subcommand (handles global options like -C)
+		gitCmd, err := parser.ParseGitCommand(cmd)
+		if err != nil {
+			continue
+		}
+
+		if gitCmd.Subcommand == addSubcommand {
 			return true
 		}
 	}
