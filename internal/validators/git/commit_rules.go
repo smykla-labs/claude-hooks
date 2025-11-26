@@ -290,7 +290,7 @@ func (r *PRReferenceRule) Validate(_ *ParsedCommit, message string) []string {
 
 	// Show examples for URL references
 	if urlMatch := r.urlRefRegex.FindString(message); urlMatch != "" {
-		prNumRegex := regexp.MustCompile(`[0-9]+$`)
+		prNumRegex := regexp.MustCompile(`[0-9]{1,10}$`)
 		prNum := prNumRegex.FindString(urlMatch)
 
 		// Strip any prefix captured by the anchor pattern (e.g., "://", space, etc.)

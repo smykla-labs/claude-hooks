@@ -183,5 +183,59 @@ var _ = Describe("PRReferenceRule", func() {
 				}
 			})
 		})
+
+		Context("bounded quantifier prevents ReDoS on URLs", func() {
+			It("should not match PR numbers exceeding 10 digits", func() {
+				commit := &git.ParsedCommit{Title: "test", Valid: true}
+
+				// 20 digits exceeds the 10-digit limit
+				errors := rule.Validate(
+					commit,
+					"see https://github.com/owner/repo/pull/12345678901234567890",
+				)
+				Expect(errors).To(BeEmpty())
+			})
+
+			It("should handle extremely long PR numbers efficiently", func() {
+				commit := &git.ParsedCommit{Title: "test", Valid: true}
+
+				// 1000 digits - would cause ReDoS without bounded quantifier
+				longPRNum := strings.Repeat("1", 1000)
+				errors := rule.Validate(
+					commit,
+					"see https://github.com/owner/repo/pull/"+longPRNum,
+				)
+
+				// Should not match (exceeds 10 digits) and should complete quickly
+				Expect(errors).To(BeEmpty())
+			})
+
+			It("should match PR numbers up to 10 digits", func() {
+				commit := &git.ParsedCommit{Title: "test", Valid: true}
+				errors := rule.Validate(
+					commit,
+					"see https://github.com/owner/repo/pull/1234567890",
+				)
+				Expect(errors).NotTo(BeEmpty())
+			})
+
+			It("should match exactly at the boundary (10 digits)", func() {
+				commit := &git.ParsedCommit{Title: "test", Valid: true}
+
+				// 10 digits - exactly at the limit
+				errors := rule.Validate(
+					commit,
+					"see https://github.com/owner/repo/pull/1234567890",
+				)
+				Expect(errors).NotTo(BeEmpty())
+
+				// 11 digits - one over the limit
+				errors = rule.Validate(
+					commit,
+					"see https://github.com/owner/repo/pull/12345678901",
+				)
+				Expect(errors).To(BeEmpty())
+			})
+		})
 	})
 })
