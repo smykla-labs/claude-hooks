@@ -5,6 +5,21 @@ All notable changes to klaudiush will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0](https://github.com/smykla-labs/klaudiush/compare/v1.0.2...v1.1.0) (2025-11-26)
+
+### Features
+
+* **dispatcher:** add parallel validator execution ([525a592](https://github.com/smykla-labs/klaudiush/commit/525a59241d24cab3a6af70cc2b7123c613b59491))
+* **git:** add request-scoped git caching ([bdfa248](https://github.com/smykla-labs/klaudiush/commit/bdfa248682bca41cbeda32a478388e84ceed1d2b))
+* **plugin:** add extensible plugin system with Go/exec/gRPC loaders ([#20](https://github.com/smykla-labs/klaudiush/issues/20)) ([2ed6811](https://github.com/smykla-labs/klaudiush/commit/2ed68115448d7a66d80f1b068e06327d7640555a))
+* **validator:** add enhanced error reporting ([2d94303](https://github.com/smykla-labs/klaudiush/commit/2d94303335f55f3e2f7686e843bf1fd6b0a342d2))
+* **validator:** add secrets detection validator ([7df5898](https://github.com/smykla-labs/klaudiush/commit/7df589896f27e6a66a50a866bf778dbf063af33b))
+
+### Bug Fixes
+
+* **security:** add regex anchors to prevent ReDoS ([6a62e6d](https://github.com/smykla-labs/klaudiush/commit/6a62e6df86369b04b35e9433f5739431d8061940)), closes [#123](https://github.com/smykla-labs/klaudiush/issues/123)
+* **validator:** use appropriate error codes for commit validation ([#29](https://github.com/smykla-labs/klaudiush/issues/29)) ([89a66e7](https://github.com/smykla-labs/klaudiush/commit/89a66e70d4c6352af1c8ec356adcb42f24690ffa)), closes [#23](https://github.com/smykla-labs/klaudiush/issues/23)
+
 ## [1.0.2](https://github.com/smykla-labs/klaudiush/compare/v1.0.1...v1.0.2) (2025-11-25)
 
 ### Bug Fixes
