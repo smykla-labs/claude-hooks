@@ -1,6 +1,8 @@
 package git_test
 
 import (
+	"strings"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -52,15 +54,22 @@ var _ = Describe("PRReferenceRule", func() {
 		})
 
 		Context("bounded quantifier prevents ReDoS", func() {
-			It("should not match extremely long digit sequences", func() {
+			It("should not match numbers exceeding 10 digits", func() {
 				commit := &git.ParsedCommit{Title: "test", Valid: true}
-				longNumber := "#" + string(make([]byte, 100)) // 100+ digits would be unrealistic
-				for i := range longNumber[1:] {
-					longNumber = longNumber[:i+1] + "1" + longNumber[i+2:]
-				}
-				// Pattern should still work efficiently with bounded quantifier
+
+				// 20 digits exceeds the 10-digit limit
 				errors := rule.Validate(commit, "test #12345678901234567890 test")
-				// Should not match because it exceeds 10 digits
+				Expect(errors).To(BeEmpty())
+			})
+
+			It("should handle extremely long digit sequences efficiently", func() {
+				commit := &git.ParsedCommit{Title: "test", Valid: true}
+
+				// 1000 digits - would cause ReDoS without bounded quantifier
+				longNumber := "#" + strings.Repeat("1", 1000)
+				errors := rule.Validate(commit, "test "+longNumber+" test")
+
+				// Should not match (exceeds 10 digits) and should complete quickly
 				Expect(errors).To(BeEmpty())
 			})
 
@@ -68,6 +77,18 @@ var _ = Describe("PRReferenceRule", func() {
 				commit := &git.ParsedCommit{Title: "test", Valid: true}
 				errors := rule.Validate(commit, "issue #1234567890 fixed")
 				Expect(errors).NotTo(BeEmpty())
+			})
+
+			It("should match exactly at the boundary (10 digits)", func() {
+				commit := &git.ParsedCommit{Title: "test", Valid: true}
+
+				// 10 digits - exactly at the limit
+				errors := rule.Validate(commit, "issue #1234567890 fixed")
+				Expect(errors).NotTo(BeEmpty())
+
+				// 11 digits - one over the limit
+				errors = rule.Validate(commit, "issue #12345678901 fixed")
+				Expect(errors).To(BeEmpty())
 			})
 		})
 	})
