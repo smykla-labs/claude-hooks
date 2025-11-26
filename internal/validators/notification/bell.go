@@ -92,3 +92,9 @@ func (v *BellValidator) getCustomCommand() string {
 
 	return ""
 }
+
+// Category returns the validator category for parallel execution.
+// BellValidator uses CategoryIO because it writes to /dev/tty or executes commands.
+func (*BellValidator) Category() validator.ValidatorCategory {
+	return validator.CategoryIO
+}

@@ -225,5 +225,11 @@ func (v *AddValidator) getBlockedPatterns() []string {
 	return []string{"tmp/*"}
 }
 
+// Category returns the validator category for parallel execution.
+// AddValidator uses CategoryGit because it queries git repository state.
+func (*AddValidator) Category() validator.ValidatorCategory {
+	return validator.CategoryGit
+}
+
 // Ensure AddValidator implements validator.Validator
 var _ validator.Validator = (*AddValidator)(nil)

@@ -9,6 +9,38 @@ import (
 	"github.com/smykla-labs/klaudiush/pkg/logger"
 )
 
+// ValidatorCategory represents the type of workload a validator performs.
+// Used to select the appropriate worker pool for parallel execution.
+type ValidatorCategory int
+
+const (
+	// CategoryCPU is for pure computation validators (regex, parsing).
+	// These are lightweight and CPU-bound.
+	CategoryCPU ValidatorCategory = iota
+
+	// CategoryIO is for validators that invoke external processes (shellcheck, terraform, tflint).
+	// These are I/O-bound and benefit from higher concurrency.
+	CategoryIO
+
+	// CategoryGit is for validators that perform git operations.
+	// These should be serialized to avoid index lock contention.
+	CategoryGit
+)
+
+// String returns a string representation of the category.
+func (c ValidatorCategory) String() string {
+	switch c {
+	case CategoryCPU:
+		return "CPU"
+	case CategoryIO:
+		return "IO"
+	case CategoryGit:
+		return "Git"
+	default:
+		return "Unknown"
+	}
+}
+
 // Validator validates a hook context.
 type Validator interface {
 	// Name returns the validator name.
@@ -16,6 +48,10 @@ type Validator interface {
 
 	// Validate validates the given context and returns a result.
 	Validate(ctx context.Context, hookCtx *hook.Context) *Result
+
+	// Category returns the validator's workload category for parallel execution.
+	// Default: CategoryCPU
+	Category() ValidatorCategory
 }
 
 // Result represents the validation result.
@@ -137,6 +173,12 @@ func (v *BaseValidator) Name() string {
 //nolint:ireturn // interface for polymorphism
 func (v *BaseValidator) Logger() logger.Logger {
 	return v.logger
+}
+
+// Category returns the default category (CPU) for validators.
+// Validators that perform I/O or Git operations should override this.
+func (*BaseValidator) Category() ValidatorCategory {
+	return CategoryCPU
 }
 
 // LogValidation logs the validation result.

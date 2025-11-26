@@ -210,3 +210,9 @@ func (v *ShellScriptValidator) getContextLines() int {
 
 	return defaultShellContextLines
 }
+
+// Category returns the validator category for parallel execution.
+// ShellScriptValidator uses CategoryIO because it invokes shellcheck.
+func (*ShellScriptValidator) Category() validator.ValidatorCategory {
+	return validator.CategoryIO
+}

@@ -41,6 +41,20 @@ func (m *MockValidator) EXPECT() *MockValidatorMockRecorder {
 	return m.recorder
 }
 
+// Category mocks base method.
+func (m *MockValidator) Category() ValidatorCategory {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Category")
+	ret0, _ := ret[0].(ValidatorCategory)
+	return ret0
+}
+
+// Category indicates an expected call of Category.
+func (mr *MockValidatorMockRecorder) Category() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Category", reflect.TypeOf((*MockValidator)(nil).Category))
+}
+
 // Name mocks base method.
 func (m *MockValidator) Name() string {
 	m.ctrl.T.Helper()

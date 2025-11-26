@@ -216,3 +216,9 @@ func (v *MarkdownValidator) getContentWithState(
 func formatTableSuggestion(lineNum int, suggestion string) string {
 	return fmt.Sprintf("Line %d - Use this properly formatted table:\n\n%s", lineNum, suggestion)
 }
+
+// Category returns the validator category for parallel execution.
+// MarkdownValidator uses CategoryIO because it invokes markdownlint.
+func (*MarkdownValidator) Category() validator.ValidatorCategory {
+	return validator.CategoryIO
+}

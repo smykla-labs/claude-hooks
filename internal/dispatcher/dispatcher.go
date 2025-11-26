@@ -54,13 +54,28 @@ func shortName(name string) string {
 type Dispatcher struct {
 	registry *validator.Registry
 	logger   logger.Logger
+	executor Executor
 }
 
-// NewDispatcher creates a new Dispatcher.
+// NewDispatcher creates a new Dispatcher with sequential execution.
 func NewDispatcher(registry *validator.Registry, logger logger.Logger) *Dispatcher {
 	return &Dispatcher{
 		registry: registry,
 		logger:   logger,
+		executor: NewSequentialExecutor(logger),
+	}
+}
+
+// NewDispatcherWithExecutor creates a new Dispatcher with a custom executor.
+func NewDispatcherWithExecutor(
+	registry *validator.Registry,
+	logger logger.Logger,
+	executor Executor,
+) *Dispatcher {
+	return &Dispatcher{
+		registry: registry,
+		logger:   logger,
+		executor: executor,
 	}
 }
 
@@ -101,44 +116,24 @@ func (d *Dispatcher) runValidators(ctx context.Context, hookCtx *hook.Context) [
 		"count", len(validators),
 	)
 
-	validationErrors := make([]*ValidationError, 0, len(validators))
+	// Use executor to run validators (sequential or parallel)
+	validationErrors := d.executor.Execute(ctx, hookCtx, validators)
 
-	for _, v := range validators {
-		name := shortName(v.Name())
+	// Log results
+	for _, verr := range validationErrors {
+		name := shortName(verr.Validator)
 
-		d.logger.Debug("running validator",
-			"validator", name,
-		)
-
-		result := v.Validate(ctx, hookCtx)
-
-		if result.Passed {
-			d.logger.Info("validator passed",
-				"validator", name,
-			)
-
-			continue
-		}
-
-		// Log based on whether it blocks
-		if result.ShouldBlock {
+		if verr.ShouldBlock {
 			d.logger.Error("validator failed",
 				"validator", name,
-				"message", result.Message,
+				"message", verr.Message,
 			)
 		} else {
 			d.logger.Info("validator warned",
 				"validator", name,
-				"message", result.Message,
+				"message", verr.Message,
 			)
 		}
-
-		validationErrors = append(validationErrors, &ValidationError{
-			Validator:   v.Name(),
-			Message:     result.Message,
-			Details:     result.Details,
-			ShouldBlock: result.ShouldBlock,
-		})
 	}
 
 	return validationErrors

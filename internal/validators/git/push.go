@@ -236,3 +236,9 @@ func (*PushValidator) validateKumaPush(remote string) *validator.Result {
 
 	return validator.Pass()
 }
+
+// Category returns the validator category for parallel execution.
+// PushValidator uses CategoryGit because it queries git remote and branch state.
+func (*PushValidator) Category() validator.ValidatorCategory {
+	return validator.CategoryGit
+}

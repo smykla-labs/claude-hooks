@@ -32,6 +32,31 @@ type GlobalConfig struct {
 	// Individual validator timeouts override this value.
 	// Default: "10s"
 	DefaultTimeout Duration `json:"default_timeout,omitempty" koanf:"default_timeout" toml:"default_timeout"`
+
+	// ParallelExecution enables parallel validator execution.
+	// Default: false (sequential execution)
+	ParallelExecution *bool `json:"parallel_execution,omitempty" koanf:"parallel_execution" toml:"parallel_execution"`
+
+	// MaxCPUWorkers is the maximum number of concurrent CPU-bound validators.
+	// Default: runtime.NumCPU()
+	MaxCPUWorkers *int `json:"max_cpu_workers,omitempty" koanf:"max_cpu_workers" toml:"max_cpu_workers"`
+
+	// MaxIOWorkers is the maximum number of concurrent I/O-bound validators.
+	// Default: runtime.NumCPU() * 2
+	MaxIOWorkers *int `json:"max_io_workers,omitempty" koanf:"max_io_workers" toml:"max_io_workers"`
+
+	// MaxGitWorkers is the maximum number of concurrent git operations.
+	// Default: 1 (serialized to avoid index lock contention)
+	MaxGitWorkers *int `json:"max_git_workers,omitempty" koanf:"max_git_workers" toml:"max_git_workers"`
+}
+
+// IsParallelExecutionEnabled returns whether parallel execution is enabled.
+func (g *GlobalConfig) IsParallelExecutionEnabled() bool {
+	if g == nil || g.ParallelExecution == nil {
+		return false
+	}
+
+	return *g.ParallelExecution
 }
 
 // GetValidators returns the validators config, creating it if it doesn't exist.

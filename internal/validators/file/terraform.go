@@ -259,3 +259,9 @@ func (v *TerraformValidator) isUseTflint() bool {
 
 	return true
 }
+
+// Category returns the validator category for parallel execution.
+// TerraformValidator uses CategoryIO because it invokes terraform/tofu and tflint.
+func (*TerraformValidator) Category() validator.ValidatorCategory {
+	return validator.CategoryIO
+}

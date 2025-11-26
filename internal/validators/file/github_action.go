@@ -575,3 +575,9 @@ func (v *WorkflowValidator) isUseActionlint() bool {
 
 	return true
 }
+
+// Category returns the validator category for parallel execution.
+// WorkflowValidator uses CategoryIO because it invokes actionlint and GitHub API.
+func (*WorkflowValidator) Category() validator.ValidatorCategory {
+	return validator.CategoryIO
+}

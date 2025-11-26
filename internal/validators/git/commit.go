@@ -339,5 +339,11 @@ func (v *CommitValidator) isMessageValidationEnabled() bool {
 	return true
 }
 
+// Category returns the validator category for parallel execution.
+// CommitValidator uses CategoryGit because it accesses the git staging area.
+func (*CommitValidator) Category() validator.ValidatorCategory {
+	return validator.CategoryGit
+}
+
 // Ensure CommitValidator implements validator.Validator
 var _ validator.Validator = (*CommitValidator)(nil)
