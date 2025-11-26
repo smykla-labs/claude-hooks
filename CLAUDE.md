@@ -29,6 +29,9 @@ task install                      # install to ~/.claude/hooks/dispatcher
 task test                         # all tests
 task test:unit                    # unit tests only
 task test:integration             # integration tests only
+task test:fuzz                    # fuzz tests (10s each)
+task test:fuzz:git                # git parser fuzz (60s)
+FUZZ_TIME=5m task test:fuzz:git   # custom duration
 
 # Linting & Development
 task check                        # lint + auto-fix
