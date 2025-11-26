@@ -10,7 +10,7 @@ import (
 
 	tomlparser "github.com/knadh/koanf/parsers/toml/v2"
 	"github.com/knadh/koanf/providers/confmap"
-	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/env/v2"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 
@@ -138,7 +138,12 @@ func (l *KoanfLoader) Load(flags map[string]any) (*config.Config, error) {
 	}
 
 	// 4. Environment variables: KLAUDIUSH_*
-	if err := l.k.Load(env.Provider("KLAUDIUSH_", ".", l.envTransform), nil); err != nil {
+	envOpt := env.Opt{
+		Prefix:        "KLAUDIUSH_",
+		TransformFunc: l.envTransform,
+	}
+
+	if err := l.k.Load(env.Provider(".", envOpt), nil); err != nil {
 		return nil, fmt.Errorf("failed to load env vars: %w", err)
 	}
 
@@ -188,12 +193,12 @@ func (l *KoanfLoader) loadTOMLFile(path string) error {
 
 // envTransform transforms environment variable names to config paths.
 // KLAUDIUSH_VALIDATORS_GIT_COMMIT_ENABLED → validators.git.commit.enabled
-func (*KoanfLoader) envTransform(s string) string {
-	s = strings.TrimPrefix(s, "KLAUDIUSH_")
-	s = strings.ToLower(s)
-	s = strings.ReplaceAll(s, "_", ".")
+func (*KoanfLoader) envTransform(key, value string) (string, any) {
+	key = strings.TrimPrefix(key, "KLAUDIUSH_")
+	key = strings.ToLower(key)
+	key = strings.ReplaceAll(key, "_", ".")
 
-	return s
+	return key, value
 }
 
 // GlobalConfigPath returns the path to the global configuration file.
