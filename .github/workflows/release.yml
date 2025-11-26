@@ -9,18 +9,15 @@ on:
     - cron: '0 2 * * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
-  issues: write
-  pull-requests: write
-  id-token: write
-  attestations: write
+permissions: {}
 
 jobs:
   # Run tests first
   test:
     name: Test
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
@@ -50,6 +47,10 @@ jobs:
     name: Semantic Release
     runs-on: ubuntu-24.04
     needs: test
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     outputs:
       new_release_published: ${{ steps.semantic.outputs.new_release_published }}
       new_release_version: ${{ steps.semantic.outputs.new_release_version }}
@@ -91,6 +92,10 @@ jobs:
     runs-on: ubuntu-24.04
     needs: release
     if: needs.release.outputs.new_release_published == 'true'
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
 
     steps:
       - name: Generate App Token

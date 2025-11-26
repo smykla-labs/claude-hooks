@@ -14,18 +14,24 @@ If you discover a security vulnerability, please report it by emailing the maint
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
+### Contact Information
+
+- **GitHub Security Advisories**: [Report via GitHub](https://github.com/smykla-labs/klaudiush/security/advisories/new)
+- **Email**: [bartek@smykla.com](mailto:bartek@smykla.com)
+
 To report a security vulnerability:
 
-1. **Email**: Contact the project maintainers directly
-2. **Provide details**: Include as much information as possible about the vulnerability:
+1. **Preferred**: Use [GitHub Security Advisories](https://github.com/smykla-labs/klaudiush/security/advisories/new)
+2. **Alternative**: Email [bartek@smykla.com](mailto:bartek@smykla.com)
+3. **Provide details**: Include as much information as possible about the vulnerability:
 
    - Description of the vulnerability
    - Steps to reproduce
    - Potential impact
    - Suggested fix (if available)
 
-3. **Wait for response**: You should receive a response within 48 hours
-4. **Coordinated disclosure**: Please allow time for the vulnerability to be fixed before public disclosure
+4. **Wait for response**: You should receive a response within 48 hours
+5. **Coordinated disclosure**: Please allow time for the vulnerability to be fixed before public disclosure
 
 ## Security Update Process
 
