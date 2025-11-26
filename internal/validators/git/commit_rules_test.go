@@ -126,5 +126,41 @@ var _ = Describe("PRReferenceRule", func() {
 				Entry("full https URL", "https://github.com/owner/repo/pull/123"),
 			)
 		})
+
+		Context("error message formatting", func() {
+			It("should not produce malformed URLs in error messages", func() {
+				commit := &git.ParsedCommit{Title: "test", Valid: true}
+				errors := rule.Validate(commit, "See https://github.com/owner/repo/pull/123")
+				Expect(errors).NotTo(BeEmpty())
+
+				// Check error messages don't contain malformed URLs
+				for _, err := range errors {
+					Expect(err).NotTo(ContainSubstring("https://://"))
+					Expect(err).NotTo(ContainSubstring("https://https://"))
+				}
+
+				// Verify the correct URL format is shown
+				foundURLError := false
+				for _, err := range errors {
+					match, _ := ContainSubstring("github.com/owner/repo/pull/123").Match(err)
+					if match {
+						foundURLError = true
+						break
+					}
+				}
+				Expect(foundURLError).To(BeTrue(), "Expected error to contain the GitHub URL")
+			})
+
+			It("should format error correctly for URL at start of body", func() {
+				commit := &git.ParsedCommit{Title: "test", Valid: true}
+				errors := rule.Validate(commit, "fix:\n\ngithub.com/owner/repo/pull/456")
+				Expect(errors).NotTo(BeEmpty())
+
+				for _, err := range errors {
+					Expect(err).NotTo(ContainSubstring("https://://"))
+					Expect(err).NotTo(ContainSubstring("https:// "))
+				}
+			})
+		})
 	})
 })

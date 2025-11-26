@@ -292,9 +292,16 @@ func (r *PRReferenceRule) Validate(_ *ParsedCommit, message string) []string {
 	if urlMatch := r.urlRefRegex.FindString(message); urlMatch != "" {
 		prNumRegex := regexp.MustCompile(`[0-9]+$`)
 		prNum := prNumRegex.FindString(urlMatch)
+
+		// Strip any prefix captured by the anchor pattern (e.g., "://", space, etc.)
+		cleanURL := urlMatch
+		if idx := strings.Index(urlMatch, "github.com"); idx > 0 {
+			cleanURL = urlMatch[idx:]
+		}
+
 		errors = append(
 			errors,
-			fmt.Sprintf("   Found: 'https://%s' → Should be: '%s'", urlMatch, prNum),
+			fmt.Sprintf("   Found: 'https://%s' → Should be: '%s'", cleanURL, prNum),
 		)
 	}
 
