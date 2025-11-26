@@ -106,15 +106,10 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
-            Please review pull request #${{ needs.check-trigger.outputs.pr_number }} in ${{ github.repository }} and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
+            Review PR #${{ needs.check-trigger.outputs.pr_number }} in ${{ github.repository }}.
 
-            Use the repository's CLAUDE.md for guidance on style and conventions.
-            Be constructive and helpful in your feedback.
+            Focus on significant issues only: bugs, security problems, or major quality concerns.
+            Skip minor style nitpicks. Follow CLAUDE.md conventions. Be concise.
 
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+            Post your review using `gh pr comment`.
           claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
