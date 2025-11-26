@@ -153,3 +153,7 @@ Framework: Ginkgo/Gomega. 336 tests. Run: `mise exec -- go test -v ./pkg/parser 
 
 - `0`: Allowed (pass/warn/no match)
 - `2`: Blocked (fail with `ShouldBlock=true`)
+
+## Session Notes
+
+Additional implementation details from specific sessions are in `.claude/session-*.md` files. Check these for patterns around parallel execution, testing concurrent code, etc.
