@@ -108,7 +108,13 @@ func (p *CommitParser) Parse(message string) *ParsedCommit {
 	msg, err := p.machine.Parse([]byte(message))
 
 	// If parsing fails due to trailer validation issues, fall back to title-only parsing
-	// while preserving the ability to manually extract body and footers
+	// while preserving the ability to manually extract body and footers.
+	//
+	// NOTE: This check depends on the error message format from go-conventionalcommits.
+	// The library returns errors like "illegal ',' character in trailer: col=533" when
+	// it encounters invalid trailer syntax. We detect this by checking for "trailer" in
+	// the error message. If the library changes its error messages in a future version,
+	// this fallback logic may break.
 	if err != nil && strings.Contains(err.Error(), "trailer") {
 		// Parse just the title line to get type, scope, description
 		msg, err = p.machine.Parse([]byte(title))
@@ -117,7 +123,7 @@ func (p *CommitParser) Parse(message string) *ParsedCommit {
 			return result
 		}
 
-		// Manually extract body and check for BREAKING CHANGE footers
+		// Manually extract body and footers since the library rejected the full message
 		p.extractBodyAndFooters(message, result)
 	} else if err != nil {
 		result.ParseError = err.Error()
@@ -174,6 +180,10 @@ func (p *CommitParser) Parse(message string) *ParsedCommit {
 
 // extractBodyAndFooters manually extracts body and footers from the full message
 // when the library's parser fails due to strict trailer validation.
+//
+// This function maintains consistency with the full parser by populating the Footers
+// map and detecting BREAKING CHANGE footers, ensuring the same behavior regardless
+// of which parsing path was taken.
 func (*CommitParser) extractBodyAndFooters(message string, result *ParsedCommit) {
 	lines := strings.Split(message, "\n")
 	if len(lines) <= 1 {
@@ -190,18 +200,70 @@ func (*CommitParser) extractBodyAndFooters(message string, result *ParsedCommit)
 		return
 	}
 
-	// Extract body (everything after title)
 	bodyLines := lines[bodyStartIdx:]
-	result.Body = strings.Join(bodyLines, "\n")
 
-	// Check for BREAKING CHANGE in footers
-	// Look for lines that match "BREAKING CHANGE: " or "BREAKING-CHANGE: "
-	for _, line := range bodyLines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "BREAKING CHANGE:") ||
-			strings.HasPrefix(trimmed, "BREAKING-CHANGE:") {
-			result.IsBreakingChange = true
+	// Find where footers start (scanning backwards from the end)
+	footerStartIdx := findFooterStartIndex(bodyLines)
+
+	// Extract footers if found
+	if footerStartIdx < len(bodyLines) {
+		extractFootersFromLines(bodyLines[footerStartIdx:], result)
+		result.Body = strings.TrimRight(strings.Join(bodyLines[:footerStartIdx], "\n"), "\n")
+	} else {
+		result.Body = strings.Join(bodyLines, "\n")
+	}
+}
+
+// findFooterStartIndex scans backwards to find where git trailers start in the body.
+// Git trailers appear at the end, separated from the body by a blank line.
+func findFooterStartIndex(bodyLines []string) int {
+	footerStartIdx := len(bodyLines)
+	footerPattern := regexp.MustCompile(`^([A-Za-z0-9-]+):\s*(.*)$`)
+
+	for i := len(bodyLines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(bodyLines[i])
+		if line == "" {
+			footerStartIdx = i + 1
 			break
+		}
+
+		if !footerPattern.MatchString(line) {
+			footerStartIdx = i + 1
+			break
+		}
+	}
+
+	return footerStartIdx
+}
+
+// extractFootersFromLines parses footer lines and populates the result's Footers map.
+func extractFootersFromLines(footerLines []string, result *ParsedCommit) {
+	if result.Footers == nil {
+		result.Footers = make(map[string][]string)
+	}
+
+	footerPattern := regexp.MustCompile(`^([A-Za-z0-9-]+):\s*(.*)$`)
+
+	const expectedFooterMatches = 3 // full match + 2 capture groups
+
+	for _, line := range footerLines {
+		trimmedLine := strings.TrimSpace(line)
+		if trimmedLine == "" {
+			continue
+		}
+
+		matches := footerPattern.FindStringSubmatch(trimmedLine)
+		if len(matches) != expectedFooterMatches {
+			continue
+		}
+
+		token := matches[1]
+		value := matches[2]
+		result.Footers[token] = append(result.Footers[token], value)
+
+		// Check for breaking change markers
+		if token == "BREAKING CHANGE" || token == "BREAKING-CHANGE" {
+			result.IsBreakingChange = true
 		}
 	}
 }
