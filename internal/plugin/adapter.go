@@ -66,11 +66,11 @@ func (a *ValidatorAdapter) Validate(ctx context.Context, hookCtx *hook.Context) 
 		Details:     resp.Details,
 	}
 
-	// Map error code if present
+	// Map error code to reference if present
 	if resp.ErrorCode != "" {
-		result.ErrorCode = validator.ErrorCode(resp.ErrorCode)
+		// Convert error code to reference URL format
+		result.Reference = validator.Reference(validator.ReferenceBaseURL + "/" + resp.ErrorCode)
 		result.FixHint = resp.FixHint
-		result.DocLink = resp.DocLink
 	}
 
 	return result

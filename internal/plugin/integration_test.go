@@ -559,7 +559,7 @@ var _ = Describe("Plugin Integration Tests", func() {
 				Expect(result.Passed).To(BeFalse())
 				Expect(result.ShouldBlock).To(BeTrue())
 				Expect(result.Message).To(ContainSubstring("gRPC validation failed"))
-				Expect(string(result.ErrorCode)).To(Equal("TEST001"))
+				Expect(result.Reference.Code()).To(Equal("TEST001"))
 				Expect(result.FixHint).To(Equal("Fix the issue"))
 			})
 		})

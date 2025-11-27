@@ -262,9 +262,9 @@ var _ = Describe("ValidatorAdapter", func() {
 			Expect(result).NotTo(BeNil())
 			Expect(result.Passed).To(BeFalse())
 			Expect(result.ShouldBlock).To(BeTrue())
-			Expect(result.ErrorCode).To(Equal(validator.ErrorCode("TEST001")))
+			expectedRef := validator.Reference(validator.ReferenceBaseURL + "/TEST001")
+			Expect(result.Reference).To(Equal(expectedRef))
 			Expect(result.FixHint).To(Equal("fix hint"))
-			Expect(result.DocLink).To(Equal("https://docs.example.com/TEST001"))
 		})
 
 		It("should convert details map", func() {
