@@ -9,6 +9,7 @@ require (
 	github.com/dmarkham/enumer v1.6.1
 	github.com/go-git/go-git/v6 v6.0.0-20251125231338-2d242db0996d
 	github.com/go-viper/mapstructure/v2 v2.4.0
+	github.com/gobwas/glob v0.2.3
 	github.com/google/go-github/v79 v79.0.0
 	github.com/knadh/koanf/parsers/toml/v2 v2.2.0
 	github.com/knadh/koanf/providers/confmap v1.0.0

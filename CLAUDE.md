@@ -72,6 +72,14 @@ Represents tool invocations: `EventType` (PreToolUse/PostToolUse/Notification), 
 
 **Error Format Policy**: Validators return errors with structured format including error codes (GIT001-GIT018, FILE001-FILE005, SEC001-SEC005, SHELL001-SHELL005), automatic fix hints from suggestions registry, and documentation URLs (`https://klaudiu.sh/{CODE}`). Use `FailWithRef(ref, msg)` to auto-populate fix hints - NEVER set `FixHint` manually. Error priority determines which reference is shown when multiple rules fail. See `.claude/validator-error-format-policy.md` for comprehensive guide.
 
+### Rule Engine (`internal/rules/`)
+
+Dynamic validation configuration without modifying code. Rules allow users to define custom validation behavior via TOML configuration.
+
+**Components**: Pattern system (glob/regex auto-detection via `gobwas/glob`), Matchers (repo/remote/branch/file/content/command), Registry (priority sorting, merge), Evaluator (first-match semantics), Engine (main entry point), ValidatorAdapter (bridges with validators).
+
+**Usage**: Validators use `RuleValidatorAdapter.CheckRules()` before built-in logic. If rule matches, returns validator.Result; otherwise continues with built-in validation. See `.claude/session-rule-engine.md` for details.
+
 ### Parsers
 
 **Bash** (`pkg/parser/bash.go`): AST parsing via `mvdan.cc/sh/v3/syntax`, extracts commands/file writes/git ops
@@ -199,6 +207,7 @@ Additional implementation details and policies are in `.claude/` files:
 - `session-fuzzing.md` - Go native fuzzing for parsers, fuzz targets by risk, type limitations, progress tracking in `tmp/fuzzing/`
 - `session-github-quality.md` - OSSF Scorecard, branch rulesets API, Renovate version sync (customManagers:githubActionsVersions), smyklot bot workflows
 - `session-codeql-regex-security.md` - CodeQL regex anchor fixes (CWE-020), URL pattern anchoring with `(?:^|://|[^/a-zA-Z0-9])`, bounded quantifiers for ReDoS, prefix consumption in matches, GitHub push protection bypass for test secrets, PR review thread resolution
+- `session-rule-engine.md` - Dynamic validation rule engine with pattern matching (glob/regex auto-detection), matchers, registry, evaluator, and validator adapter integration
 
 ## Plugin Documentation
 
