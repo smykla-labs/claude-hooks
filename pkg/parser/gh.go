@@ -225,7 +225,7 @@ func (c *GHMergeCommand) IsSquashMerge() bool {
 		return false
 	}
 
-	return c.Squash || (!c.Merge && !c.Rebase) // Squash is default if no method specified
+	return true // Squash is default if no method specified
 }
 
 // IsAutoMerge returns true if this enables auto-merge.
