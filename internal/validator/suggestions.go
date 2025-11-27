@@ -36,6 +36,9 @@ var DefaultSuggestions = map[Reference]string{
 	RefSecretsPrivKey:    "Remove private key from code; use secure key storage",
 	RefSecretsToken:      "Remove token and use environment variables or secret management",
 	RefSecretsConnString: "Use environment variables for database connection strings",
+
+	// Shell suggestions
+	RefShellBackticks: "Use HEREDOC (git commit -m \"$(cat <<'EOF'\\n...\\nEOF\\n)\") or file-based input (--body-file)",
 }
 
 // GetSuggestion returns the fix suggestion for a reference.

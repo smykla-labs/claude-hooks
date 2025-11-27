@@ -26,6 +26,9 @@ type ValidatorsConfig struct {
 
 	// Secrets validator configurations.
 	Secrets *SecretsConfig `json:"secrets,omitempty" koanf:"secrets" toml:"secrets"`
+
+	// Shell validator configurations.
+	Shell *ShellConfig `json:"shell,omitempty" koanf:"shell" toml:"shell"`
 }
 
 // GlobalConfig contains global settings that apply to all validators.

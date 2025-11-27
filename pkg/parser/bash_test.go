@@ -359,4 +359,118 @@ EOF`
 			Expect(gitCmds[1].Args).To(Equal([]string{"diff"}))
 		})
 	})
+
+	Describe("FindDoubleQuotedBackticks", func() {
+		Context("with backticks in double quotes", func() {
+			It("detects backticks in git commit message", func() {
+				issues, err := p.FindDoubleQuotedBackticks(
+					"git commit -m \"Fix bug in `parser` module\"",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(issues).To(HaveLen(1))
+				Expect(issues[0].ArgIndex).To(Equal(3))
+				// ArgValue will have command substitution executed/removed
+				Expect(issues[0].ArgValue).NotTo(BeEmpty())
+			})
+
+			It("detects backticks in gh pr create", func() {
+				issues, err := p.FindDoubleQuotedBackticks(
+					"gh pr create --body \"Updated `config.toml` handling\"",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(issues).To(HaveLen(1))
+				// gh=0, pr=1, create=2, --body=3, "..."=4
+				Expect(issues[0].ArgIndex).To(Equal(4))
+			})
+
+			It("detects backticks in gh issue create", func() {
+				issues, err := p.FindDoubleQuotedBackticks(
+					"gh issue create --title \"Bug in `validate` function\"",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(issues).To(HaveLen(1))
+				// gh=0, issue=1, create=2, --title=3, "..."=4
+				Expect(issues[0].ArgIndex).To(Equal(4))
+			})
+
+			It("detects multiple arguments with backticks", func() {
+				issues, err := p.FindDoubleQuotedBackticks(
+					"git commit -m \"Fix `parser`\" -m \"Update `validator`\"",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(issues).To(HaveLen(2))
+				Expect(issues[0].ArgIndex).To(Equal(3))
+				Expect(issues[1].ArgIndex).To(Equal(5))
+			})
+		})
+
+		Context("with single quotes (no issue)", func() {
+			It("ignores backticks in single quotes", func() {
+				issues, err := p.FindDoubleQuotedBackticks(
+					"git commit -m 'Fix bug in `parser` module'",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(issues).To(BeEmpty())
+			})
+		})
+
+		Context("with escaped backticks", func() {
+			It("does not detect escaped backticks", func() {
+				// In the shell, \` becomes a literal backtick, not command substitution
+				// The shell parser will see this as a literal backslash + backtick
+				// which gets interpreted as command substitution, so we should still detect it
+				issues, err := p.FindDoubleQuotedBackticks(
+					"git commit -m \"Fix bug in \\`parser\\` module\"",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				// Escaped backticks are NOT command substitution in the AST
+				Expect(issues).To(BeEmpty())
+			})
+		})
+
+		Context("with no backticks", func() {
+			It("returns empty for normal double-quoted strings", func() {
+				issues, err := p.FindDoubleQuotedBackticks(
+					"git commit -m \"Fix bug in parser module\"",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(issues).To(BeEmpty())
+			})
+
+			It("returns empty for single-quoted strings", func() {
+				issues, err := p.FindDoubleQuotedBackticks(
+					"git commit -m 'Fix bug in parser module'",
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(issues).To(BeEmpty())
+			})
+		})
+
+		Context("with $() command substitution (recommended pattern)", func() {
+			It("detects $() as command substitution in double quotes", func() {
+				// $(cat <<'EOF' ... EOF) is the recommended HEREDOC pattern
+				// This should also be detected as command substitution
+				cmd := "git commit -m \"$(cat <<'EOF'\nFix bug in parser module\nEOF\n)\""
+				issues, err := p.FindDoubleQuotedBackticks(cmd)
+				Expect(err).NotTo(HaveOccurred())
+				// This is command substitution, which is fine for HEREDOC pattern
+				// but we're detecting ANY command substitution in double quotes
+				Expect(issues).To(HaveLen(1))
+			})
+		})
+
+		Context("with empty command", func() {
+			It("returns error for empty string", func() {
+				_, err := p.FindDoubleQuotedBackticks("")
+				Expect(err).To(MatchError(parser.ErrEmptyCommand))
+			})
+		})
+
+		Context("with invalid syntax", func() {
+			It("returns error for malformed command", func() {
+				_, err := p.FindDoubleQuotedBackticks("git commit -m \"unclosed")
+				Expect(err).To(HaveOccurred())
+			})
+		})
+	})
 })

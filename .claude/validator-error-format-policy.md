@@ -83,6 +83,10 @@ RefShellcheck     Reference = "https://klaudiu.sh/FILE001"
 - SEC004: Token detected
 - SEC005: Connection string with credentials
 
+**SHELL001-SHELL005**: Shell operations
+
+- SHELL001: Command substitution in double-quoted strings
+
 ## Suggestions Registry
 
 `internal/validator/suggestions.go` maps references to fix hints:

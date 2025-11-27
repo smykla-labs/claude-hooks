@@ -102,6 +102,12 @@ const (
 	RefSecretsConnString Reference = ReferenceBaseURL + "/SEC005"
 )
 
+// Shell-related references (SHELL001-SHELL005).
+const (
+	// RefShellBackticks indicates unescaped backticks in double-quoted strings.
+	RefShellBackticks Reference = ReferenceBaseURL + "/SHELL001"
+)
+
 // minCodeLength is the minimum length for a valid reference code.
 const minCodeLength = 3
 

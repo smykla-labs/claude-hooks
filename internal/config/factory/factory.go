@@ -27,6 +27,9 @@ type ValidatorFactory interface {
 	// CreateSecretsValidators creates all secrets validators from config.
 	CreateSecretsValidators(cfg *config.Config) []ValidatorWithPredicate
 
+	// CreateShellValidators creates all shell validators from config.
+	CreateShellValidators(cfg *config.Config) []ValidatorWithPredicate
+
 	// CreatePluginValidators creates all plugin validators from config.
 	CreatePluginValidators(cfg *config.Config) []ValidatorWithPredicate
 
@@ -40,6 +43,7 @@ type DefaultValidatorFactory struct {
 	fileFactory         *FileValidatorFactory
 	notificationFactory *NotificationValidatorFactory
 	secretsFactory      *SecretsValidatorFactory
+	shellFactory        *ShellValidatorFactory
 	pluginFactory       *PluginValidatorFactory
 }
 
@@ -50,6 +54,7 @@ func NewValidatorFactory(log logger.Logger) *DefaultValidatorFactory {
 		fileFactory:         NewFileValidatorFactory(log),
 		notificationFactory: NewNotificationValidatorFactory(log),
 		secretsFactory:      NewSecretsValidatorFactory(log),
+		shellFactory:        NewShellValidatorFactory(log),
 		pluginFactory:       NewPluginValidatorFactory(log),
 	}
 }
@@ -80,6 +85,13 @@ func (f *DefaultValidatorFactory) CreateSecretsValidators(
 	return f.secretsFactory.CreateValidators(cfg)
 }
 
+// CreateShellValidators creates all shell validators from config.
+func (f *DefaultValidatorFactory) CreateShellValidators(
+	cfg *config.Config,
+) []ValidatorWithPredicate {
+	return f.shellFactory.CreateValidators(cfg)
+}
+
 // CreatePluginValidators creates all plugin validators from config.
 func (f *DefaultValidatorFactory) CreatePluginValidators(
 	cfg *config.Config,
@@ -95,6 +107,7 @@ func (f *DefaultValidatorFactory) CreateAll(cfg *config.Config) []ValidatorWithP
 	all = append(all, f.CreateFileValidators(cfg)...)
 	all = append(all, f.CreateNotificationValidators(cfg)...)
 	all = append(all, f.CreateSecretsValidators(cfg)...)
+	all = append(all, f.CreateShellValidators(cfg)...)
 	all = append(all, f.CreatePluginValidators(cfg)...)
 
 	return all

@@ -150,3 +150,24 @@ func wordsToStrings(words []*syntax.Word) []string {
 
 	return result
 }
+
+// hasDoubleQuotedBackticks checks if a word contains backticks within double quotes.
+// Backticks in double quotes are parsed as CmdSubst nodes by the shell parser.
+func hasDoubleQuotedBackticks(word *syntax.Word) bool {
+	if word == nil {
+		return false
+	}
+
+	for _, part := range word.Parts {
+		if dq, ok := part.(*syntax.DblQuoted); ok {
+			// Check if any part within the double quotes is a command substitution
+			for _, dqPart := range dq.Parts {
+				if _, isCmdSubst := dqPart.(*syntax.CmdSubst); isCmdSubst {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}

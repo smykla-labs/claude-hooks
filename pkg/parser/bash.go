@@ -98,3 +98,45 @@ func (r *ParseResult) GetCommands(name string) []Command {
 
 	return result
 }
+
+// BacktickIssue represents a problematic use of backticks in double quotes.
+type BacktickIssue struct {
+	ArgIndex int    // Index of the argument containing backticks
+	ArgValue string // Value of the argument
+}
+
+// FindDoubleQuotedBackticks detects backticks in double-quoted command arguments.
+// It returns a list of arguments that contain backticks within double quotes.
+func (p *BashParser) FindDoubleQuotedBackticks(command string) ([]BacktickIssue, error) {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return nil, ErrEmptyCommand
+	}
+
+	// Parse the command into an AST
+	file, err := p.parser.Parse(strings.NewReader(command), "")
+	if err != nil {
+		return nil, errors.Wrap(ErrParseFailed, err.Error())
+	}
+
+	var issues []BacktickIssue
+
+	// Walk the AST looking for CallExpr nodes
+	syntax.Walk(file, func(node syntax.Node) bool {
+		if call, ok := node.(*syntax.CallExpr); ok {
+			// Check each argument (skip command name at index 0)
+			for i, arg := range call.Args {
+				if hasDoubleQuotedBackticks(arg) {
+					issues = append(issues, BacktickIssue{
+						ArgIndex: i,
+						ArgValue: wordToString(arg),
+					})
+				}
+			}
+		}
+
+		return true
+	})
+
+	return issues, nil
+}
