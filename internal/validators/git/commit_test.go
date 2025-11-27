@@ -569,6 +569,97 @@ Changes:
 			})
 		})
 
+		Context("when message has trailer-like patterns with commas", func() {
+			It("should pass with 'Solution:' in body containing commas", func() {
+				ctx := &hook.Context{
+					EventType: hook.EventTypePreToolUse,
+					ToolName:  hook.ToolTypeBash,
+					ToolInput: hook.ToolInput{
+						Command: `git commit -sS -a -m "$(cat <<'EOF'
+build(makefile): fix version script output parsing
+
+Fix "too many arguments" error in make test by properly
+parsing multi-line output from script.
+
+Solution: Use foreach to evaluate each line separately,
+ensuring each variable assignment is processed independently.
+EOF
+)"`,
+					},
+				}
+
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeTrue())
+			})
+
+			It("should pass with 'Changes:' list containing commas", func() {
+				ctx := &hook.Context{
+					EventType: hook.EventTypePreToolUse,
+					ToolName:  hook.ToolTypeBash,
+					ToolInput: hook.ToolInput{
+						Command: `git commit -sS -a -m "$(cat <<'EOF'
+fix(parser): fix strict trailer validation
+
+Fix issue with go-conventionalcommits library.
+
+Changes:
+
+- Parse full message first, fall back on errors
+- Manually extract body, footers in fallback mode
+- Preserve functionality (breaking changes, footers)
+- Add extractBodyAndFooters helper
+EOF
+)"`,
+					},
+				}
+
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeTrue())
+			})
+
+			It("should still detect BREAKING CHANGE in fallback mode", func() {
+				ctx := &hook.Context{
+					EventType: hook.EventTypePreToolUse,
+					ToolName:  hook.ToolTypeBash,
+					ToolInput: hook.ToolInput{
+						Command: `git commit -sS -a -m "$(cat <<'EOF'
+feat(api)!: remove deprecated endpoint
+
+Remove old API endpoint.
+
+Solution: Use new endpoint, migrate existing code.
+
+BREAKING CHANGE: old endpoint no longer available
+EOF
+)"`,
+					},
+				}
+
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeTrue())
+			})
+
+			It("should validate title format even in fallback mode", func() {
+				ctx := &hook.Context{
+					EventType: hook.EventTypePreToolUse,
+					ToolName:  hook.ToolTypeBash,
+					ToolInput: hook.ToolInput{
+						Command: `git commit -sS -a -m "$(cat <<'EOF'
+invalid commit title
+
+This has a Solution: Use X, Y, and Z pattern that
+would trigger trailer validation.
+EOF
+)"`,
+					},
+				}
+
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeFalse())
+				Expect(result.Details["errors"]).To(ContainSubstring("conventional commits format"))
+			})
+		})
+
 		Context("when message contains PR references", func() {
 			It("should fail with #123 reference", func() {
 				ctx := &hook.Context{
