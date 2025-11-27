@@ -623,7 +623,7 @@ EOF
 					ToolName:  hook.ToolTypeBash,
 					ToolInput: hook.ToolInput{
 						Command: `git commit -sS -a -m "$(cat <<'EOF'
-feat(api)!: remove deprecated endpoint
+feat(api): remove deprecated endpoint
 
 Remove old API endpoint.
 
