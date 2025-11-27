@@ -2,6 +2,7 @@ package linters_test
 
 import (
 	"context"
+	"errors"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -9,6 +10,7 @@ import (
 
 	execpkg "github.com/smykla-labs/klaudiush/internal/exec"
 	"github.com/smykla-labs/klaudiush/internal/linters"
+	"github.com/smykla-labs/klaudiush/internal/validators"
 	"github.com/smykla-labs/klaudiush/pkg/config"
 )
 
@@ -316,4 +318,737 @@ code
 			Expect(result).NotTo(BeNil())
 		})
 	})
+
+	Describe("Mocked markdownlint execution", func() {
+		var (
+			ctrl            *gomock.Controller
+			mockRunner      *execpkg.MockCommandRunner
+			mockToolChecker *execpkg.MockToolChecker
+			mockTempMgr     *execpkg.MockTempFileManager
+		)
+
+		BeforeEach(func() {
+			ctrl = gomock.NewController(GinkgoT())
+			mockRunner = execpkg.NewMockCommandRunner(ctrl)
+			mockToolChecker = execpkg.NewMockToolChecker(ctrl)
+			mockTempMgr = execpkg.NewMockTempFileManager(ctrl)
+		})
+
+		AfterEach(func() {
+			ctrl.Finish()
+		})
+
+		Describe("runMarkdownlint", func() {
+			Context("when markdownlint tool is not found", func() {
+				It("should return success without running", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("")
+
+					result := linter.Lint(ctx, "# Test\n", nil)
+
+					Expect(result.Success).To(BeTrue())
+				})
+			})
+
+			Context("when markdownlint succeeds", func() {
+				It("should return success", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint")
+					mockTempMgr.EXPECT().
+						Create(gomock.Any(), gomock.Any()).
+						Return("/tmp/test.md", func() {}, nil)
+					mockRunner.EXPECT().
+						Run(gomock.Any(), "/usr/bin/markdownlint", "/tmp/test.md").
+						Return(execpkg.CommandResult{ExitCode: 0, Stdout: "", Stderr: ""})
+
+					result := linter.Lint(ctx, "# Test\n", nil)
+
+					Expect(result.Success).To(BeTrue())
+				})
+			})
+
+			Context("when markdownlint fails", func() {
+				It("should return failure with error output", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint")
+					mockTempMgr.EXPECT().
+						Create(gomock.Any(), gomock.Any()).
+						Return("/tmp/test.md", func() {}, nil)
+					mockRunner.EXPECT().
+						Run(gomock.Any(), "/usr/bin/markdownlint", "/tmp/test.md").
+						Return(execpkg.CommandResult{
+							ExitCode: 1,
+							Stdout:   "/tmp/test.md:1 MD022",
+							Stderr:   "",
+						})
+
+					result := linter.Lint(ctx, "# Test\n", nil)
+
+					Expect(result.Success).To(BeFalse())
+					Expect(result.RawOut).To(ContainSubstring("MD022"))
+				})
+			})
+
+			Context("when temp file creation fails", func() {
+				It("should return failure", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint")
+					mockTempMgr.EXPECT().
+						Create(gomock.Any(), gomock.Any()).
+						Return("", nil, errMockTempFile)
+
+					result := linter.Lint(ctx, "# Test\n", nil)
+
+					Expect(result.Success).To(BeFalse())
+					Expect(result.RawOut).To(ContainSubstring("Failed to create temp file"))
+				})
+			})
+		})
+
+		Describe("buildConfigArgs with custom config", func() {
+			Context("when custom config file is specified", func() {
+				It("should use the custom config path", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint:    &useMarkdownlint,
+						MarkdownlintConfig: "/path/to/custom.json",
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint")
+					mockTempMgr.EXPECT().
+						Create(gomock.Any(), gomock.Any()).
+						Return("/tmp/test.md", func() {}, nil)
+					mockRunner.EXPECT().
+						Run(
+							gomock.Any(),
+							"/usr/bin/markdownlint",
+							"--config", "/path/to/custom.json",
+							"/tmp/test.md",
+						).
+						Return(execpkg.CommandResult{ExitCode: 0})
+
+					result := linter.Lint(ctx, "# Test\n", nil)
+
+					Expect(result.Success).To(BeTrue())
+				})
+			})
+
+			Context("when custom rules are specified", func() {
+				It("should create a temp config file with rules", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+						MarkdownlintRules: map[string]bool{
+							"MD022": true,
+							"MD041": false,
+						},
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint")
+
+					// First Create call for config file
+					mockTempMgr.EXPECT().
+						Create("markdownlint-config-*.json", gomock.Any()).
+						DoAndReturn(func(_, content string) (string, func(), error) {
+							// Verify the config content contains our rules
+							Expect(content).To(ContainSubstring(`"MD022": true`))
+							Expect(content).To(ContainSubstring(`"MD041": false`))
+
+							return "/tmp/config.json", func() {}, nil
+						})
+
+					// Second Create call for markdown file
+					mockTempMgr.EXPECT().
+						Create(gomock.Any(), gomock.Any()).
+						Return("/tmp/test.md", func() {}, nil)
+
+					mockRunner.EXPECT().
+						Run(
+							gomock.Any(),
+							"/usr/bin/markdownlint",
+							"--config", "/tmp/config.json",
+							"/tmp/test.md",
+						).
+						Return(execpkg.CommandResult{ExitCode: 0})
+
+					result := linter.Lint(ctx, "# Test\n", nil)
+
+					Expect(result.Success).To(BeTrue())
+				})
+			})
+		})
+
+		Describe("createFragmentConfig", func() {
+			Context("with fragment linting (initialState with StartLine > 0)", func() {
+				It("should create fragment config for markdownlint-cli", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint")
+
+					// Markdown file creation first
+					mockTempMgr.EXPECT().
+						Create("markdownlint-*.md", gomock.Any()).
+						Return("/tmp/test.md", func() {}, nil)
+
+					// Fragment config creation
+					mockTempMgr.EXPECT().
+						Create("markdownlint-fragment-*.json", gomock.Any()).
+						DoAndReturn(func(_, content string) (string, func(), error) {
+							// Fragment not at EOF should disable MD047
+							Expect(content).To(ContainSubstring(`"MD047": false`))
+
+							return "/tmp/fragment-config.json", func() {}, nil
+						})
+
+					mockRunner.EXPECT().
+						Run(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(execpkg.CommandResult{ExitCode: 0})
+
+					initialState := &validators.MarkdownState{
+						StartLine: 10,
+						EndsAtEOF: false,
+					}
+					result := linter.Lint(ctx, "# Test\n", initialState)
+
+					Expect(result.Success).To(BeTrue())
+				})
+
+				It("should create fragment config for markdownlint-cli2", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint-cli2")
+
+					// Markdown file creation first
+					mockTempMgr.EXPECT().
+						Create("markdownlint-*.md", gomock.Any()).
+						Return("/tmp/test.md", func() {}, nil)
+
+					// Fragment config creation for cli2
+					mockTempMgr.EXPECT().
+						Create("fragment-*.markdownlint-cli2.jsonc", gomock.Any()).
+						DoAndReturn(func(_, content string) (string, func(), error) {
+							// cli2 format wraps rules in "config" object
+							Expect(content).To(ContainSubstring(`"config": {`))
+							Expect(content).To(ContainSubstring(`"MD047": false`))
+
+							return "/tmp/fragment-config.jsonc", func() {}, nil
+						})
+
+					mockRunner.EXPECT().
+						Run(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(execpkg.CommandResult{ExitCode: 0})
+
+					initialState := &validators.MarkdownState{
+						StartLine: 10,
+						EndsAtEOF: false,
+					}
+					result := linter.Lint(ctx, "# Test\n", initialState)
+
+					Expect(result.Success).To(BeTrue())
+				})
+
+				It("should not disable MD047 when fragment ends at EOF", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint")
+
+					// Markdown file creation first
+					mockTempMgr.EXPECT().
+						Create("markdownlint-*.md", gomock.Any()).
+						Return("/tmp/test.md", func() {}, nil)
+
+					// Fragment config for fragment that ends at EOF
+					mockTempMgr.EXPECT().
+						Create("markdownlint-fragment-*.json", gomock.Any()).
+						DoAndReturn(func(_, content string) (string, func(), error) {
+							// Should be empty config (MD047 not disabled)
+							Expect(content).To(Equal("{}"))
+
+							return "/tmp/fragment-config.json", func() {}, nil
+						})
+
+					mockRunner.EXPECT().
+						Run(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(execpkg.CommandResult{ExitCode: 0})
+
+					initialState := &validators.MarkdownState{
+						StartLine: 10,
+						EndsAtEOF: true,
+					}
+					result := linter.Lint(ctx, "# Test\n", initialState)
+
+					Expect(result.Success).To(BeTrue())
+				})
+			})
+
+			Context("when config creation fails", func() {
+				It("should return failure", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint")
+
+					// Markdown file creation first
+					mockTempMgr.EXPECT().
+						Create("markdownlint-*.md", gomock.Any()).
+						Return("/tmp/test.md", func() {}, nil)
+
+					// Fragment config creation fails
+					mockTempMgr.EXPECT().
+						Create("markdownlint-fragment-*.json", gomock.Any()).
+						Return("", nil, errMockTempFile)
+
+					initialState := &validators.MarkdownState{
+						StartLine: 10,
+						EndsAtEOF: false,
+					}
+					result := linter.Lint(ctx, "# Test\n", initialState)
+
+					Expect(result.Success).To(BeFalse())
+					Expect(
+						result.RawOut,
+					).To(ContainSubstring("Failed to create markdownlint config"))
+				})
+			})
+		})
+
+		Describe("createTempConfig with rules", func() {
+			Context("when custom rules config creation fails", func() {
+				It("should return failure", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+						MarkdownlintRules: map[string]bool{
+							"MD022": true,
+						},
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint")
+
+					// Markdown file creation first
+					mockTempMgr.EXPECT().
+						Create("markdownlint-*.md", gomock.Any()).
+						Return("/tmp/test.md", func() {}, nil)
+
+					// Config file creation fails
+					mockTempMgr.EXPECT().
+						Create("markdownlint-config-*.json", gomock.Any()).
+						Return("", nil, errMockTempFile)
+
+					result := linter.Lint(ctx, "# Test\n", nil)
+
+					Expect(result.Success).To(BeFalse())
+					Expect(
+						result.RawOut,
+					).To(ContainSubstring("Failed to create markdownlint config"))
+				})
+			})
+
+			Context("when using markdownlint-cli2 with rules", func() {
+				It("should create cli2 format config", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+						MarkdownlintRules: map[string]bool{
+							"MD022": true,
+						},
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint-cli2")
+
+					// Markdown file creation first
+					mockTempMgr.EXPECT().
+						Create("markdownlint-*.md", gomock.Any()).
+						Return("/tmp/test.md", func() {}, nil)
+
+					// Config file with cli2 format
+					mockTempMgr.EXPECT().
+						Create("config-*.markdownlint-cli2.jsonc", gomock.Any()).
+						DoAndReturn(func(_, content string) (string, func(), error) {
+							Expect(content).To(ContainSubstring(`"config": {`))
+							Expect(content).To(ContainSubstring(`"MD022": true`))
+
+							return "/tmp/config.jsonc", func() {}, nil
+						})
+
+					mockRunner.EXPECT().
+						Run(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(execpkg.CommandResult{ExitCode: 0})
+
+					result := linter.Lint(ctx, "# Test\n", nil)
+
+					Expect(result.Success).To(BeTrue())
+				})
+			})
+		})
+
+		Describe("findMarkdownlintTool", func() {
+			Context("when custom path is configured", func() {
+				It("should use the configured path", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint:  &useMarkdownlint,
+						MarkdownlintPath: "/custom/path/markdownlint",
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					// Should NOT call FindTool when custom path is set
+					mockTempMgr.EXPECT().
+						Create(gomock.Any(), gomock.Any()).
+						Return("/tmp/test.md", func() {}, nil)
+					mockRunner.EXPECT().
+						Run(gomock.Any(), "/custom/path/markdownlint", "/tmp/test.md").
+						Return(execpkg.CommandResult{ExitCode: 0})
+
+					result := linter.Lint(ctx, "# Test\n", nil)
+
+					Expect(result.Success).To(BeTrue())
+				})
+			})
+
+			Context("when no custom path and tool found via FindTool", func() {
+				It("should use the found tool", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/found/markdownlint-cli2")
+					mockTempMgr.EXPECT().
+						Create(gomock.Any(), gomock.Any()).
+						Return("/tmp/test.md", func() {}, nil)
+					mockRunner.EXPECT().
+						Run(gomock.Any(), "/found/markdownlint-cli2", "/tmp/test.md").
+						Return(execpkg.CommandResult{ExitCode: 0})
+
+					result := linter.Lint(ctx, "# Test\n", nil)
+
+					Expect(result.Success).To(BeTrue())
+				})
+			})
+		})
+
+		Describe("prepareRules with fragment disabling", func() {
+			Context("when fragment-specific rules are NOT in user config", func() {
+				It("should add disabled rules for fragments not at EOF", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+						MarkdownlintRules: map[string]bool{
+							"MD022": true,
+							// MD041 and MD047 NOT in config - should be added as false
+						},
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint")
+
+					// Use InOrder to ensure correct mock matching
+					gomock.InOrder(
+						// Markdown file creation first
+						mockTempMgr.EXPECT().
+							Create("markdownlint-*.md", gomock.Any()).
+							Return("/tmp/test.md", func() {}, nil),
+
+						// Config file creation with rules
+						mockTempMgr.EXPECT().
+							Create("markdownlint-config-*.json", gomock.Any()).
+							DoAndReturn(func(_, content string) (string, func(), error) {
+								// Both MD041 and MD047 should be added as disabled
+								Expect(content).To(ContainSubstring(`"MD041": false`))
+								Expect(content).To(ContainSubstring(`"MD047": false`))
+
+								return "/tmp/config.json", func() {}, nil
+							}),
+					)
+
+					mockRunner.EXPECT().
+						Run(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(execpkg.CommandResult{ExitCode: 0})
+
+					initialState := &validators.MarkdownState{
+						StartLine: 10,
+						EndsAtEOF: false,
+					}
+					result := linter.Lint(ctx, "# Test\n", initialState)
+
+					Expect(result.Success).To(BeTrue())
+				})
+
+				It("should only add disabled MD041 for fragments at EOF", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+						MarkdownlintRules: map[string]bool{
+							"MD022": true,
+							// MD041 and MD047 NOT in config
+						},
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint")
+
+					// Use InOrder to ensure correct mock matching
+					gomock.InOrder(
+						// Markdown file creation first
+						mockTempMgr.EXPECT().
+							Create("markdownlint-*.md", gomock.Any()).
+							Return("/tmp/test.md", func() {}, nil),
+
+						// Config file creation with rules
+						mockTempMgr.EXPECT().
+							Create("markdownlint-config-*.json", gomock.Any()).
+							DoAndReturn(func(_, content string) (string, func(), error) {
+								// MD041 should be added as disabled (fragment)
+								Expect(content).To(ContainSubstring(`"MD041": false`))
+								// MD047 should NOT be added (fragment at EOF)
+								Expect(content).NotTo(ContainSubstring(`"MD047"`))
+
+								return "/tmp/config.json", func() {}, nil
+							}),
+					)
+
+					mockRunner.EXPECT().
+						Run(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(execpkg.CommandResult{ExitCode: 0})
+
+					initialState := &validators.MarkdownState{
+						StartLine: 10,
+						EndsAtEOF: true, // Fragment ends at EOF
+					}
+					result := linter.Lint(ctx, "# Test\n", initialState)
+
+					Expect(result.Success).To(BeTrue())
+				})
+			})
+
+			Context("when fragment-specific rules ARE in user config", func() {
+				It("should respect user's explicit config (not override)", func() {
+					useMarkdownlint := true
+					cfg := &config.MarkdownValidatorConfig{
+						UseMarkdownlint: &useMarkdownlint,
+						MarkdownlintRules: map[string]bool{
+							"MD022": true,
+							"MD041": true, // User explicitly enables - should NOT be overridden
+							"MD047": true, // User explicitly enables - should NOT be overridden
+						},
+					}
+					linter := linters.NewMarkdownLinterWithDeps(
+						mockRunner,
+						mockToolChecker,
+						mockTempMgr,
+						cfg,
+					)
+
+					mockToolChecker.EXPECT().
+						FindTool("markdownlint-cli2", "markdownlint").
+						Return("/usr/bin/markdownlint")
+
+					// Use InOrder to ensure correct mock matching
+					gomock.InOrder(
+						// Markdown file creation first
+						mockTempMgr.EXPECT().
+							Create("markdownlint-*.md", gomock.Any()).
+							Return("/tmp/test.md", func() {}, nil),
+
+						// Config file creation with rules
+						mockTempMgr.EXPECT().
+							Create("markdownlint-config-*.json", gomock.Any()).
+							DoAndReturn(func(_, content string) (string, func(), error) {
+								// User's explicit config should be preserved
+								Expect(content).To(ContainSubstring(`"MD041": true`))
+								Expect(content).To(ContainSubstring(`"MD047": true`))
+
+								return "/tmp/config.json", func() {}, nil
+							}),
+					)
+
+					mockRunner.EXPECT().
+						Run(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(execpkg.CommandResult{ExitCode: 0})
+
+					initialState := &validators.MarkdownState{
+						StartLine: 10,
+						EndsAtEOF: false,
+					}
+					result := linter.Lint(ctx, "# Test\n", initialState)
+
+					Expect(result.Success).To(BeTrue())
+				})
+			})
+		})
+	})
+
+	Describe("NewMarkdownLinterWithDeps", func() {
+		It("should create a linter with all injected dependencies", func() {
+			ctrl := gomock.NewController(GinkgoT())
+			defer ctrl.Finish()
+
+			mockRunner := execpkg.NewMockCommandRunner(ctrl)
+			mockToolChecker := execpkg.NewMockToolChecker(ctrl)
+			mockTempMgr := execpkg.NewMockTempFileManager(ctrl)
+			cfg := &config.MarkdownValidatorConfig{}
+
+			linter := linters.NewMarkdownLinterWithDeps(
+				mockRunner,
+				mockToolChecker,
+				mockTempMgr,
+				cfg,
+			)
+
+			Expect(linter).NotTo(BeNil())
+		})
+	})
 })
+
+var errMockTempFile = errors.New("mock temp file error")

@@ -69,6 +69,21 @@ func NewMarkdownLinterWithConfig(
 	}
 }
 
+// NewMarkdownLinterWithDeps creates a new RealMarkdownLinter with injected dependencies
+func NewMarkdownLinterWithDeps(
+	runner execpkg.CommandRunner,
+	toolChecker execpkg.ToolChecker,
+	tempMgr execpkg.TempFileManager,
+	cfg *config.MarkdownValidatorConfig,
+) *RealMarkdownLinter {
+	return &RealMarkdownLinter{
+		runner:      runner,
+		toolChecker: toolChecker,
+		config:      cfg,
+		tempMgr:     tempMgr,
+	}
+}
+
 // Lint validates Markdown content using markdownlint (if enabled and available)
 // and/or custom rules
 func (l *RealMarkdownLinter) Lint(
