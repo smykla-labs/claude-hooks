@@ -125,6 +125,13 @@ func (v *MergeValidator) validateMerge(
 		return validator.Pass()
 	}
 
+	// Only validate squash merges (they use PR title+body as commit message)
+	if !mergeCmd.IsSquashMerge() {
+		log.Debug("Skipping validation for non-squash merge")
+
+		return validator.Pass()
+	}
+
 	// Fetch PR details
 	prDetails, err := v.fetchPRDetails(ctx, mergeCmd)
 	if err != nil {

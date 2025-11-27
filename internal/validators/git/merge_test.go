@@ -65,7 +65,7 @@ var _ = Describe("MergeValidator", func() {
 				validator = git.NewMergeValidator(logger.NewNoOpLogger(), fakeGit, cfg)
 			})
 
-			It("should validate rebase merge", func() {
+			It("should skip validation for rebase merge", func() {
 				hookCtx := &hook.Context{
 					ToolName: hook.ToolTypeBash,
 					ToolInput: hook.ToolInput{
@@ -74,12 +74,12 @@ var _ = Describe("MergeValidator", func() {
 				}
 
 				result := validator.Validate(context.Background(), hookCtx)
-				// Without signoff requirement, should pass (PR fetch would fail in real scenario)
-				// This test confirms rebase merges are now validated like other merge types
+				// Rebase merges preserve individual commit messages, so validation is skipped
 				Expect(result).NotTo(BeNil())
+				Expect(result.Passed).To(BeTrue())
 			})
 
-			It("should validate merge commit (--merge flag)", func() {
+			It("should skip validation for merge commit (--merge flag)", func() {
 				hookCtx := &hook.Context{
 					ToolName: hook.ToolTypeBash,
 					ToolInput: hook.ToolInput{
@@ -88,9 +88,9 @@ var _ = Describe("MergeValidator", func() {
 				}
 
 				result := validator.Validate(context.Background(), hookCtx)
-				// Without signoff requirement, should pass (PR fetch would fail in real scenario)
-				// This test confirms merge commits are now validated like other merge types
+				// Regular merge commits preserve individual commit messages, so validation is skipped
 				Expect(result).NotTo(BeNil())
+				Expect(result.Passed).To(BeTrue())
 			})
 		})
 	})
