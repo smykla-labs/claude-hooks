@@ -175,3 +175,35 @@ Changed from separate `ErrorCode` + `DocLink` fields to unified `Reference` URL:
 - Renamed `FailWithCode` → `FailWithRef`, `WarnWithCode` → `WarnWithRef`
 - `ErrXxx` constants → `RefXxx` constants
 - Result no longer has `DocLink` field (it's embedded in Reference URL)
+
+## Plugin System (2025-11-27)
+
+Plugins manage their own error documentation. The adapter preserves plugin-provided URLs:
+
+```go
+// internal/plugin/adapter.go
+// Use plugin's own error metadata if provided
+// Plugins manage their own error codes and documentation URLs
+if resp.DocLink != "" {
+    result.Reference = validator.Reference(resp.DocLink)
+}
+
+result.FixHint = resp.FixHint
+```
+
+Plugin API (`pkg/plugin/api.go`) provides:
+
+- `ErrorCode`: Plugin's error identifier (for internal use)
+- `FixHint`: Short fix suggestion
+- `DocLink`: URL to plugin's documentation (used as-is for Reference)
+
+Example plugin response with custom documentation:
+
+```go
+return pluginapi.FailWithCode(
+    "MYPLUGIN001",           // ErrorCode (for logging/debugging)
+    "validation failed",     // Message
+    "try using --flag",      // FixHint
+    "https://my-plugin.smyk.la/errors/MYPLUGIN001", // DocLink
+)
+```
