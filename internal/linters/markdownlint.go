@@ -273,7 +273,7 @@ func (l *RealMarkdownLinter) runMarkdownlint(
 	defer cleanup()
 
 	needsFragmentConfig := initialState != nil && initialState.StartLine > 0
-	disableMD047 := needsFragmentConfig
+	disableMD047 := needsFragmentConfig && !initialState.EndsAtEOF
 
 	configArgs, cleanupConfig, err := l.buildConfigArgs(
 		markdownlintPath,

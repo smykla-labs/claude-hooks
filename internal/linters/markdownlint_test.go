@@ -316,10 +316,4 @@ code
 			Expect(result).NotTo(BeNil())
 		})
 	})
-
-	Describe("Error cases", func() {
-		It("should return ErrNoRulesConfigured when creating temp config with no rules", func() {
-			// This is an internal error, tested through behavior
-		})
-	})
 })
