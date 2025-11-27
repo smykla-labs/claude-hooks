@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -102,7 +103,21 @@ func (v *MarkdownValidator) Validate(ctx context.Context, hookCtx *hook.Context)
 	lintCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	result := v.linter.Lint(lintCtx, content, initialState)
+	// Get the file path for error reporting
+	filePath := hookCtx.GetFilePath()
+	displayPath := "<content>"
+
+	if filePath != "" {
+		// Try to make path relative to current directory
+		if relPath, err := filepath.Rel(".", filePath); err == nil &&
+			!strings.HasPrefix(relPath, "..") {
+			displayPath = relPath
+		} else {
+			displayPath = filePath
+		}
+	}
+
+	result := v.linter.LintWithPath(lintCtx, content, initialState, displayPath)
 
 	if !result.Success {
 		message := "Markdown formatting errors"

@@ -35,6 +35,12 @@ var ErrNoRulesConfigured = errors.New("no rules configured")
 
 // MarkdownLinter validates Markdown files using markdownlint
 type MarkdownLinter interface {
+	LintWithPath(
+		ctx context.Context,
+		content string,
+		initialState *validators.MarkdownState,
+		originalPath string,
+	) *LintResult
 	Lint(ctx context.Context, content string, initialState *validators.MarkdownState) *LintResult
 }
 
@@ -84,12 +90,32 @@ func NewMarkdownLinterWithDeps(
 	}
 }
 
+// LintWithPath validates Markdown content with an optional original file path for error reporting.
+func (l *RealMarkdownLinter) LintWithPath(
+	ctx context.Context,
+	content string,
+	initialState *validators.MarkdownState,
+	originalPath string,
+) *LintResult {
+	return l.lintInternal(ctx, content, initialState, originalPath)
+}
+
 // Lint validates Markdown content using markdownlint (if enabled and available)
 // and/or custom rules
 func (l *RealMarkdownLinter) Lint(
 	ctx context.Context,
 	content string,
 	initialState *validators.MarkdownState,
+) *LintResult {
+	return l.lintInternal(ctx, content, initialState, "")
+}
+
+// lintInternal is the internal implementation shared by Lint and LintWithPath.
+func (l *RealMarkdownLinter) lintInternal(
+	ctx context.Context,
+	content string,
+	initialState *validators.MarkdownState,
+	originalPath string,
 ) *LintResult {
 	var allWarnings []string
 
@@ -113,7 +139,7 @@ func (l *RealMarkdownLinter) Lint(
 
 	// Run markdownlint if enabled and available
 	if l.shouldUseMarkdownlint() {
-		markdownlintResult := l.runMarkdownlint(ctx, content, initialState)
+		markdownlintResult := l.runMarkdownlint(ctx, content, initialState, originalPath)
 		if !markdownlintResult.Success {
 			allWarnings = append(allWarnings, markdownlintResult.RawOut)
 		}
@@ -231,6 +257,8 @@ func ProcessMarkdownlintOutput(
 	result *execpkg.CommandResult,
 	tempFile string,
 	preambleLines int,
+	isCli2 bool,
+	displayPath string,
 ) *LintResult {
 	if result.ExitCode == 0 {
 		return &LintResult{
@@ -240,7 +268,14 @@ func ProcessMarkdownlintOutput(
 	}
 
 	output := result.Stdout + result.Stderr
-	output = strings.ReplaceAll(output, tempFile, "<file>")
+
+	// Replace temp file path with display path
+	output = replaceTempFilePath(output, tempFile, displayPath)
+
+	// Filter out markdownlint-cli2 status messages
+	if isCli2 {
+		output = filterStatusMessages(output)
+	}
 
 	if preambleLines > 0 {
 		output = adjustLineNumbers(output, preambleLines)
@@ -265,6 +300,7 @@ func (l *RealMarkdownLinter) runMarkdownlint(
 	ctx context.Context,
 	content string,
 	initialState *validators.MarkdownState,
+	originalPath string,
 ) *LintResult {
 	markdownlintPath := l.findMarkdownlintTool()
 	if markdownlintPath == "" {
@@ -308,7 +344,15 @@ func (l *RealMarkdownLinter) runMarkdownlint(
 	args = append(args, tempFile)
 	result := l.runner.Run(ctx, markdownlintPath, args...)
 
-	return ProcessMarkdownlintOutput(&result, tempFile, preambleLines)
+	isCli2 := IsMarkdownlintCli2(markdownlintPath)
+
+	// Use original file path if provided, otherwise use <file>
+	displayPath := "<file>"
+	if originalPath != "" {
+		displayPath = originalPath
+	}
+
+	return ProcessMarkdownlintOutput(&result, tempFile, preambleLines, isCli2, displayPath)
 }
 
 const (
@@ -319,6 +363,49 @@ const (
 // lineNumberRegex matches markdownlint output line numbers in formats like:
 // <file>:10:1 or <file>:10
 var lineNumberRegex = regexp.MustCompile(`<file>:(\d+)`)
+
+// replaceTempFilePath replaces temp file paths in output with the display path.
+// Handles both absolute paths and relative paths with ../ components.
+func replaceTempFilePath(output, tempFile, displayPath string) string {
+	// Extract just the filename from the temp file path
+	filename := filepath.Base(tempFile)
+
+	// Replace patterns like: ../../tmp/filename or ../../../var/folders/.../filename
+	// This regex matches optional ../ components, then any path components, ending with the filename
+	relativePathPattern := regexp.MustCompile(`(?:\.\./)*[^\s:]*` + regexp.QuoteMeta(filename))
+	output = relativePathPattern.ReplaceAllString(output, displayPath)
+
+	// Also replace exact absolute path match (in case it wasn't caught by the regex)
+	output = strings.ReplaceAll(output, tempFile, displayPath)
+
+	return output
+}
+
+// filterStatusMessages removes markdownlint-cli2 status messages from output.
+// Status messages include version info, Finding, Linting, and Summary lines.
+func filterStatusMessages(output string) string {
+	lines := strings.Split(output, "\n")
+	result := make([]string, 0, len(lines))
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+
+		// Skip status messages from markdownlint-cli2
+		if strings.HasPrefix(trimmed, "markdownlint-cli2 ") ||
+			strings.HasPrefix(trimmed, "Finding:") ||
+			strings.HasPrefix(trimmed, "Linting:") ||
+			strings.HasPrefix(trimmed, "Summary:") {
+			continue
+		}
+
+		result = append(result, line)
+	}
+
+	return strings.Join(result, "\n")
+}
 
 // adjustLineNumbers adjusts line numbers in markdownlint output to account for preamble lines.
 // It also filters out errors that occur in the preamble itself.
