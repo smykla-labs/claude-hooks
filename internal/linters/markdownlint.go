@@ -4,12 +4,13 @@ package linters
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/cockroachdb/errors"
 
 	execpkg "github.com/smykla-labs/klaudiush/internal/exec"
 	"github.com/smykla-labs/klaudiush/internal/validators"

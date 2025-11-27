@@ -2,10 +2,11 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/smykla-labs/klaudiush/pkg/config"
 )

@@ -1,9 +1,9 @@
 package git_test
 
 import (
+	"github.com/cockroachdb/errors"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/cockroachdb/errors"
 	"go.uber.org/mock/gomock"
 
 	"github.com/smykla-labs/klaudiush/internal/git"

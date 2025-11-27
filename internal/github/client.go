@@ -3,7 +3,6 @@ package github
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/go-github/v79/github"
 
 	execpkg "github.com/smykla-labs/klaudiush/internal/exec"

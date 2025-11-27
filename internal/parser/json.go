@@ -3,10 +3,11 @@ package parser
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/smykla-labs/klaudiush/pkg/hook"
 )

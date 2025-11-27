@@ -4,8 +4,8 @@ package git
 import (
 	"fmt"
 
-	"github.com/go-git/go-git/v6"
 	"github.com/cockroachdb/errors"
+	"github.com/go-git/go-git/v6"
 )
 
 // ConfigReader provides methods to read git configuration.

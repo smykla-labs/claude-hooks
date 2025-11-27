@@ -6,11 +6,12 @@ package exec
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os/exec"
 	"time"
+
+	"github.com/cockroachdb/errors"
 )
 
 // CommandResult contains the result of a command execution.

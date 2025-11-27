@@ -3,12 +3,13 @@ package settings
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/cockroachdb/errors"
 )
 
 var (
