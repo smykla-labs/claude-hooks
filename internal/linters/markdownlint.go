@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -19,12 +20,14 @@ import (
 const (
 	// configJSONBrackets is the number of brackets in JSON config (opening and closing)
 	configJSONBrackets = 2
+	// configWrapperLines is the number of extra lines for markdownlint-cli2 wrapper
+	configWrapperLines = 2
 )
 
 // ErrMarkdownCustomRules indicates custom markdown rules found issues
 var ErrMarkdownCustomRules = errors.New("custom markdown rules validation failed")
 
-// ErrMarkdownlintFailed indicates markdownlint-cli validation failed
+// ErrMarkdownlintFailed indicates markdownlint validation failed
 var ErrMarkdownlintFailed = errors.New("markdownlint validation failed")
 
 // ErrNoRulesConfigured indicates no markdownlint rules were configured
@@ -35,7 +38,7 @@ type MarkdownLinter interface {
 	Lint(ctx context.Context, content string, initialState *validators.MarkdownState) *LintResult
 }
 
-// RealMarkdownLinter implements MarkdownLinter using markdownlint-cli and/or custom rules
+// RealMarkdownLinter implements MarkdownLinter using markdownlint and/or custom rules
 type RealMarkdownLinter struct {
 	runner      execpkg.CommandRunner
 	toolChecker execpkg.ToolChecker
@@ -66,7 +69,22 @@ func NewMarkdownLinterWithConfig(
 	}
 }
 
-// Lint validates Markdown content using markdownlint-cli (if enabled and available)
+// NewMarkdownLinterWithDeps creates a new RealMarkdownLinter with injected dependencies
+func NewMarkdownLinterWithDeps(
+	runner execpkg.CommandRunner,
+	toolChecker execpkg.ToolChecker,
+	tempMgr execpkg.TempFileManager,
+	cfg *config.MarkdownValidatorConfig,
+) *RealMarkdownLinter {
+	return &RealMarkdownLinter{
+		runner:      runner,
+		toolChecker: toolChecker,
+		config:      cfg,
+		tempMgr:     tempMgr,
+	}
+}
+
+// Lint validates Markdown content using markdownlint (if enabled and available)
 // and/or custom rules
 func (l *RealMarkdownLinter) Lint(
 	ctx context.Context,
@@ -93,7 +111,7 @@ func (l *RealMarkdownLinter) Lint(
 		maps.Copy(tableSuggested, analysisResult.TableSuggested)
 	}
 
-	// Run markdownlint-cli if enabled and available
+	// Run markdownlint if enabled and available
 	if l.shouldUseMarkdownlint() {
 		markdownlintResult := l.runMarkdownlint(ctx, content, initialState)
 		if !markdownlintResult.Success {
@@ -154,91 +172,66 @@ func (l *RealMarkdownLinter) getTableWidthMode() mdtable.WidthMode {
 	}
 }
 
-// runMarkdownlint runs markdownlint-cli on the content
-func (l *RealMarkdownLinter) runMarkdownlint(
-	ctx context.Context,
-	content string,
-	initialState *validators.MarkdownState,
-) *LintResult {
-	// Find markdownlint binary
-	markdownlintPath := "markdownlint"
+// IsMarkdownlintCli2 determines if the tool path refers to markdownlint-cli2 or markdownlint-cli.
+// Uses filepath.Base to avoid false positives from custom wrapper paths.
+func IsMarkdownlintCli2(toolPath string) bool {
+	baseName := filepath.Base(toolPath)
+
+	return strings.Contains(baseName, "markdownlint-cli2")
+}
+
+// findMarkdownlintTool locates the markdownlint binary, preferring markdownlint-cli2.
+func (l *RealMarkdownLinter) findMarkdownlintTool() string {
 	if l.config != nil && l.config.MarkdownlintPath != "" {
-		markdownlintPath = l.config.MarkdownlintPath
+		return l.config.MarkdownlintPath
 	}
 
-	if !l.toolChecker.IsAvailable(markdownlintPath) {
-		return &LintResult{
-			Success: true, // Don't fail if tool not available
-			RawOut:  "",
-		}
-	}
+	return l.toolChecker.FindTool("markdownlint-cli2", "markdownlint")
+}
 
-	// Generate preamble if we have list context
-	// This establishes the correct markdown state for markdownlint
-	preamble, preambleLines := validators.GeneratePreamble(initialState)
-	contentToLint := preamble + content
-
-	// Write content to temp file
-	tempFile, cleanup, err := l.tempMgr.Create("markdownlint-*.md", contentToLint)
-	if err != nil {
-		return &LintResult{
-			Success: false,
-			RawOut:  fmt.Sprintf("Failed to create temp file: %v", err),
-			Err:     err,
-		}
-	}
-	defer cleanup()
-
-	// Build markdownlint command
+// buildConfigArgs creates the config arguments for markdownlint command.
+func (l *RealMarkdownLinter) buildConfigArgs(
+	markdownlintPath string,
+	needsFragmentConfig, disableMD047 bool,
+) ([]string, func(), error) {
 	args := []string{}
+	noopCleanup := func() {}
 
-	// Determine if we need to disable MD047 for fragments
-	// If initialState is provided and StartLine > 0, this is a fragment
-	needsFragmentConfig := initialState != nil && initialState.StartLine > 0
-
-	// MD047 should only be disabled if fragment doesn't reach end of file
-	disableMD047 := needsFragmentConfig && !initialState.EndsAtEOF
-
-	// Add config file based on configuration and fragment status
 	hasCustomConfig := l.config != nil && l.config.MarkdownlintConfig != ""
 	hasCustomRules := l.config != nil && len(l.config.MarkdownlintRules) > 0
 
 	switch {
 	case hasCustomConfig:
-		args = append(args, "--config", l.config.MarkdownlintConfig)
+		return append(args, "--config", l.config.MarkdownlintConfig), noopCleanup, nil
 	case hasCustomRules:
-		// Create temporary config file from rules map
-		configPath, cleanupConfig, err := l.createTempConfig(needsFragmentConfig, disableMD047)
+		configPath, cleanup, err := l.createTempConfig(
+			markdownlintPath,
+			needsFragmentConfig,
+			disableMD047,
+		)
 		if err != nil {
-			return &LintResult{
-				Success: false,
-				RawOut:  fmt.Sprintf("Failed to create markdownlint config: %v", err),
-				Err:     err,
-			}
+			return nil, nil, err
 		}
-		defer cleanupConfig()
 
-		args = append(args, "--config", configPath)
+		return append(args, "--config", configPath), cleanup, nil
 	case needsFragmentConfig:
-		// No custom config, but we need to disable fragment-incompatible rules
-		configPath, cleanupConfig, err := l.createFragmentConfig(disableMD047)
+		configPath, cleanup, err := l.createFragmentConfig(markdownlintPath, disableMD047)
 		if err != nil {
-			return &LintResult{
-				Success: false,
-				RawOut:  fmt.Sprintf("Failed to create fragment config: %v", err),
-				Err:     err,
-			}
+			return nil, nil, err
 		}
-		defer cleanupConfig()
 
-		args = append(args, "--config", configPath)
+		return append(args, "--config", configPath), cleanup, nil
 	}
 
-	args = append(args, tempFile)
+	return args, noopCleanup, nil
+}
 
-	// Run markdownlint
-	result := l.runner.Run(ctx, markdownlintPath, args...)
-
+// ProcessMarkdownlintOutput processes the output from markdownlint execution.
+func ProcessMarkdownlintOutput(
+	result *execpkg.CommandResult,
+	tempFile string,
+	preambleLines int,
+) *LintResult {
 	if result.ExitCode == 0 {
 		return &LintResult{
 			Success: true,
@@ -246,18 +239,13 @@ func (l *RealMarkdownLinter) runMarkdownlint(
 		}
 	}
 
-	// Combine stdout and stderr for error messages
 	output := result.Stdout + result.Stderr
-
-	// Clean up temp file path from output
 	output = strings.ReplaceAll(output, tempFile, "<file>")
 
-	// Adjust line numbers to account for preamble and filter out preamble errors
 	if preambleLines > 0 {
 		output = adjustLineNumbers(output, preambleLines)
 	}
 
-	// Check if any real errors remain after filtering
 	if strings.TrimSpace(output) == "" {
 		return &LintResult{
 			Success: true,
@@ -270,6 +258,57 @@ func (l *RealMarkdownLinter) runMarkdownlint(
 		RawOut:  strings.TrimSpace(output),
 		Err:     ErrMarkdownlintFailed,
 	}
+}
+
+// runMarkdownlint runs markdownlint-cli2 (or markdownlint-cli) on the content
+func (l *RealMarkdownLinter) runMarkdownlint(
+	ctx context.Context,
+	content string,
+	initialState *validators.MarkdownState,
+) *LintResult {
+	markdownlintPath := l.findMarkdownlintTool()
+	if markdownlintPath == "" {
+		return &LintResult{
+			Success: true, // Don't fail if tool not available
+			RawOut:  "",
+		}
+	}
+
+	preamble, preambleLines := validators.GeneratePreamble(initialState)
+	contentToLint := preamble + content
+
+	tempFile, cleanup, err := l.tempMgr.Create("markdownlint-*.md", contentToLint)
+	if err != nil {
+		return &LintResult{
+			Success: false,
+			RawOut:  fmt.Sprintf("Failed to create temp file: %v", err),
+			Err:     err,
+		}
+	}
+	defer cleanup()
+
+	needsFragmentConfig := initialState != nil && initialState.StartLine > 0
+	disableMD047 := needsFragmentConfig && !initialState.EndsAtEOF
+
+	configArgs, cleanupConfig, err := l.buildConfigArgs(
+		markdownlintPath,
+		needsFragmentConfig,
+		disableMD047,
+	)
+	if err != nil {
+		return &LintResult{
+			Success: false,
+			RawOut:  fmt.Sprintf("Failed to create markdownlint config: %v", err),
+			Err:     err,
+		}
+	}
+	defer cleanupConfig()
+
+	args := configArgs
+	args = append(args, tempFile)
+	result := l.runner.Run(ctx, markdownlintPath, args...)
+
+	return ProcessMarkdownlintOutput(&result, tempFile, preambleLines)
 }
 
 const (
@@ -324,13 +363,23 @@ func adjustLineNumbers(output string, preambleLines int) string {
 
 // createTempConfig creates a temporary markdownlint config file from the rules map
 func (l *RealMarkdownLinter) createTempConfig(
+	toolPath string,
 	disableMD041, disableMD047 bool,
 ) (string, func(), error) {
 	if l.config == nil || len(l.config.MarkdownlintRules) == 0 {
 		return "", nil, ErrNoRulesConfigured
 	}
 
-	// Create a copy of the rules map to avoid modifying the original
+	rules := l.prepareRules(disableMD041, disableMD047)
+	isCli2 := IsMarkdownlintCli2(toolPath)
+	configContent := l.generateConfigContent(rules, isCli2)
+	pattern := l.getConfigPattern(isCli2)
+
+	return l.tempMgr.Create(pattern, configContent)
+}
+
+// prepareRules creates a copy of rules and applies fragment-specific overrides
+func (l *RealMarkdownLinter) prepareRules(disableMD041, disableMD047 bool) map[string]bool {
 	rules := make(map[string]bool, len(l.config.MarkdownlintRules))
 	maps.Copy(rules, l.config.MarkdownlintRules)
 
@@ -347,13 +396,44 @@ func (l *RealMarkdownLinter) createTempConfig(
 		}
 	}
 
-	// Create JSON config for markdownlint
-	// Format: { "rule-name": true/false, ... }
-	// Preallocate slice with capacity for rules + open/close braces
+	return rules
+}
+
+// generateConfigContent creates JSON config content for the specified tool
+func (l *RealMarkdownLinter) generateConfigContent(
+	rules map[string]bool,
+	isMarkdownlintCli2 bool,
+) string {
+	if isMarkdownlintCli2 {
+		return l.generateCli2Config(rules)
+	}
+
+	return l.generateCliConfig(rules)
+}
+
+// generateCli2Config creates markdownlint-cli2 format config
+func (l *RealMarkdownLinter) generateCli2Config(rules map[string]bool) string {
+	configLines := make([]string, 0, len(rules)+configJSONBrackets+configWrapperLines)
+	configLines = append(configLines, "{", `  "config": {`)
+	configLines = append(configLines, l.formatRules(rules, "    ")...)
+	configLines = append(configLines, "  }", "}")
+
+	return strings.Join(configLines, "\n")
+}
+
+// generateCliConfig creates markdownlint-cli format config
+func (l *RealMarkdownLinter) generateCliConfig(rules map[string]bool) string {
 	configLines := make([]string, 0, len(rules)+configJSONBrackets)
-
 	configLines = append(configLines, "{")
+	configLines = append(configLines, l.formatRules(rules, "  ")...)
+	configLines = append(configLines, "}")
 
+	return strings.Join(configLines, "\n")
+}
+
+// formatRules converts rules map to JSON lines with specified indentation
+func (*RealMarkdownLinter) formatRules(rules map[string]bool, indent string) []string {
+	lines := make([]string, 0, len(rules))
 	idx := 0
 	totalRules := len(rules)
 
@@ -363,45 +443,73 @@ func (l *RealMarkdownLinter) createTempConfig(
 			enabledStr = "false"
 		}
 
-		line := fmt.Sprintf(`  "%s": %s`, rule, enabledStr)
+		line := fmt.Sprintf(`%s"%s": %s`, indent, rule, enabledStr)
 
-		// Add comma after all rules except the last one
 		if idx < totalRules-1 {
 			line += ","
 		}
 
-		configLines = append(configLines, line)
+		lines = append(lines, line)
 		idx++
 	}
 
-	configLines = append(configLines, "}")
-	configContent := strings.Join(configLines, "\n")
+	return lines
+}
 
-	// Use TempFileManager to create temp file
-	return l.tempMgr.Create("markdownlint-config-*.json", configContent)
+// getConfigPattern returns the appropriate temp file pattern for the tool
+func (*RealMarkdownLinter) getConfigPattern(isMarkdownlintCli2 bool) string {
+	if isMarkdownlintCli2 {
+		return "config-*.markdownlint-cli2.jsonc"
+	}
+
+	return "markdownlint-config-*.json"
+}
+
+// GenerateFragmentConfigContent creates config content for fragment linting.
+func GenerateFragmentConfigContent(isCli2, disableMD047 bool) string {
+	if isCli2 {
+		if disableMD047 {
+			return `{
+  "config": {
+    "MD047": false
+  }
+}`
+		}
+
+		return `{
+  "config": {}
+}`
+	}
+
+	if disableMD047 {
+		return `{
+  "MD047": false
+}`
+	}
+
+	return "{}"
+}
+
+// GetFragmentConfigPattern returns the config file pattern for fragments.
+func GetFragmentConfigPattern(isCli2 bool) string {
+	if isCli2 {
+		return "fragment-*.markdownlint-cli2.jsonc"
+	}
+
+	return "markdownlint-fragment-*.json"
 }
 
 // createFragmentConfig creates a minimal config that disables fragment-incompatible rules
 // Note: MD041 (first-line-heading) is no longer disabled because we use a preamble with a header.
 // List-related rules (MD007, MD029, MD032) are also no longer disabled because the preamble
 // establishes the correct list context.
-func (l *RealMarkdownLinter) createFragmentConfig(disableMD047 bool) (string, func(), error) {
-	// With the preamble approach, we don't need to disable MD041 anymore
-	// The preamble includes a header
-	configContent := "{"
+func (l *RealMarkdownLinter) createFragmentConfig(
+	toolPath string,
+	disableMD047 bool,
+) (string, func(), error) {
+	isCli2 := IsMarkdownlintCli2(toolPath)
+	configContent := GenerateFragmentConfigContent(isCli2, disableMD047)
+	pattern := GetFragmentConfigPattern(isCli2)
 
-	if disableMD047 {
-		configContent += `
-  "MD047": false`
-	}
-
-	// Close the JSON object properly
-	if configContent == "{" {
-		configContent = "{}"
-	} else {
-		configContent += `
-}`
-	}
-
-	return l.tempMgr.Create("markdownlint-fragment-*.json", configContent)
+	return l.tempMgr.Create(pattern, configContent)
 }
