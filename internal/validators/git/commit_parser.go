@@ -248,8 +248,11 @@ func (*CommitParser) extractBodyAndFooters(message string, result *ParsedCommit)
 }
 
 // findFooterStartIndex scans backwards to find where git trailers start in the body.
-// Git trailers appear at the end, separated from the body by a blank line.
-// If all lines match the footer pattern with no blank line, we treat them as footers.
+//
+// Git trailers typically appear at the end, separated from the body by a blank line.
+// However, if all body lines match the footer pattern (no blank line separator), we
+// treat the entire body as footers to handle edge cases where commits contain only
+// trailers without body text.
 func findFooterStartIndex(bodyLines []string) int {
 	footerStartIdx := len(bodyLines)
 	foundNonFooter := false
