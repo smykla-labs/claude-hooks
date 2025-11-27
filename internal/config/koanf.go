@@ -2,12 +2,12 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	tomlparser "github.com/knadh/koanf/parsers/toml/v2"
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/env/v2"

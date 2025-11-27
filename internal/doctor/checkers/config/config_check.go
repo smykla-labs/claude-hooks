@@ -3,8 +3,9 @@ package configchecker
 
 import (
 	"context"
-	"errors"
 	"fmt"
+
+	"github.com/cockroachdb/errors"
 
 	internalconfig "github.com/smykla-labs/klaudiush/internal/config"
 	"github.com/smykla-labs/klaudiush/internal/doctor"

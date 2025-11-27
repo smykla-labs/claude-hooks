@@ -2,9 +2,10 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"time"
+
+	"github.com/cockroachdb/errors"
 )
 
 //go:generate enumer -type=Severity -trimprefix=Severity -transform=lower -json -text -yaml -sql

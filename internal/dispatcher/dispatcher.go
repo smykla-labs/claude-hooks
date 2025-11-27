@@ -3,9 +3,10 @@ package dispatcher
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/smykla-labs/klaudiush/internal/validator"
 	"github.com/smykla-labs/klaudiush/pkg/hook"

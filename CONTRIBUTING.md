@@ -377,7 +377,7 @@ From `CLAUDE.md`:
 - Use `slices` package (NEVER `sort.Slice`)
 - Use `maps` package for map operations
 - Use `cmp.Compare` or `cmp.Or` for comparisons
-- Use `errors` or `github.com/pkg/errors` (NO `fmt.Errorf`)
+- Use `github.com/cockroachdb/errors` (NO stdlib `errors` or `github.com/pkg/errors`)
 - Prefer `switch` over `if` chains
 - Package-level consts/vars instead of hardcoded strings
 

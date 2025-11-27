@@ -3,10 +3,11 @@ package hook
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/smykla-labs/klaudiush/internal/doctor"
 	"github.com/smykla-labs/klaudiush/internal/doctor/settings"

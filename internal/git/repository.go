@@ -4,9 +4,9 @@ package git
 import (
 	"sync"
 
+	"github.com/cockroachdb/errors"
 	"github.com/go-git/go-git/v6"
 	"github.com/go-git/go-git/v6/plumbing"
-	"github.com/pkg/errors"
 )
 
 // Repository defines the interface for git repository operations

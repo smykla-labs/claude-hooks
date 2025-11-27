@@ -3,12 +3,13 @@ package file
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/smykla-labs/klaudiush/internal/linters"
 	"github.com/smykla-labs/klaudiush/internal/validator"

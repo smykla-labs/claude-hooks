@@ -3,7 +3,6 @@ package file
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
+	"github.com/cockroachdb/errors"
 
 	"github.com/smykla-labs/klaudiush/internal/github"
 	"github.com/smykla-labs/klaudiush/internal/linters"

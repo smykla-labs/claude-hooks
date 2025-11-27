@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cockroachdb/errors"
 	"github.com/pelletier/go-toml/v2"
-	"github.com/pkg/errors"
 
 	"github.com/smykla-labs/klaudiush/pkg/config"
 )
