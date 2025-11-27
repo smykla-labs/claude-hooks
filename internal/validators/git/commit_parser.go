@@ -2,6 +2,7 @@ package git
 
 import (
 	"regexp"
+	"strings"
 
 	conventionalcommits "github.com/leodido/go-conventionalcommits"
 	ccp "github.com/leodido/go-conventionalcommits/parser"
@@ -103,11 +104,23 @@ func (p *CommitParser) Parse(message string) *ParsedCommit {
 		return result
 	}
 
-	// Parse with go-conventionalcommits
+	// Try parsing the full message first
 	msg, err := p.machine.Parse([]byte(message))
-	if err != nil {
-		result.ParseError = err.Error()
 
+	// If parsing fails due to trailer validation issues, fall back to title-only parsing
+	// while preserving the ability to manually extract body and footers
+	if err != nil && strings.Contains(err.Error(), "trailer") {
+		// Parse just the title line to get type, scope, description
+		msg, err = p.machine.Parse([]byte(title))
+		if err != nil {
+			result.ParseError = err.Error()
+			return result
+		}
+
+		// Manually extract body and check for BREAKING CHANGE footers
+		p.extractBodyAndFooters(message, result)
+	} else if err != nil {
+		result.ParseError = err.Error()
 		return result
 	}
 
@@ -128,7 +141,8 @@ func (p *CommitParser) Parse(message string) *ParsedCommit {
 		result.Scope = *cc.Scope
 	}
 
-	if cc.Body != nil {
+	// If we successfully parsed the full message, use the library's body/footers
+	if cc.Body != nil && result.Body == "" {
 		result.Body = *cc.Body
 	}
 
@@ -156,6 +170,40 @@ func (p *CommitParser) Parse(message string) *ParsedCommit {
 	result.Valid = true
 
 	return result
+}
+
+// extractBodyAndFooters manually extracts body and footers from the full message
+// when the library's parser fails due to strict trailer validation.
+func (*CommitParser) extractBodyAndFooters(message string, result *ParsedCommit) {
+	lines := strings.Split(message, "\n")
+	if len(lines) <= 1 {
+		return
+	}
+
+	// Skip title and any blank lines after it
+	bodyStartIdx := 1
+	for bodyStartIdx < len(lines) && strings.TrimSpace(lines[bodyStartIdx]) == "" {
+		bodyStartIdx++
+	}
+
+	if bodyStartIdx >= len(lines) {
+		return
+	}
+
+	// Extract body (everything after title)
+	bodyLines := lines[bodyStartIdx:]
+	result.Body = strings.Join(bodyLines, "\n")
+
+	// Check for BREAKING CHANGE in footers
+	// Look for lines that match "BREAKING CHANGE: " or "BREAKING-CHANGE: "
+	for _, line := range bodyLines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "BREAKING CHANGE:") ||
+			strings.HasPrefix(trimmed, "BREAKING-CHANGE:") {
+			result.IsBreakingChange = true
+			break
+		}
+	}
 }
 
 // IsValidType checks if a type is in the valid types list.
