@@ -155,6 +155,13 @@ func (v *BacktickValidator) isGhCommandRelevant(cmd parser.Command, argIndex int
 	return false
 }
 
+// convertArgIndexToCommandArgsIndex converts ArgIndex (from BacktickIssue) to Command.Args index.
+// ArgIndex uses call.Args indexing where 0=command name.
+// Command.Args uses indexing where 0=first argument after command.
+func convertArgIndexToCommandArgsIndex(argIndex int) int {
+	return argIndex - 1
+}
+
 // isMessageArgument checks if argIndex points to a -m or --message argument value.
 func (*BacktickValidator) isMessageArgument(args []string, argIndex int) bool {
 	// argIndex includes command name, so adjust for args slice
@@ -166,7 +173,7 @@ func (*BacktickValidator) isMessageArgument(args []string, argIndex int) bool {
 		return false
 	}
 
-	argsIdx := argIndex - 1 // Adjust for command name
+	argsIdx := convertArgIndexToCommandArgsIndex(argIndex)
 
 	if argsIdx >= len(args) {
 		return false
@@ -192,7 +199,7 @@ func (*BacktickValidator) isBodyOrTitleArgument(args []string, argIndex int) boo
 		return false
 	}
 
-	argsIdx := argIndex - 1 // Adjust for command name
+	argsIdx := convertArgIndexToCommandArgsIndex(argIndex)
 
 	if argsIdx >= len(args) {
 		return false

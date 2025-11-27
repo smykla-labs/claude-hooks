@@ -369,7 +369,7 @@ EOF`
 				Expect(err).NotTo(HaveOccurred())
 				Expect(issues).To(HaveLen(1))
 				Expect(issues[0].ArgIndex).To(Equal(3))
-				// ArgValue will have command substitution executed/removed
+				// ArgValue contains the argument with backticks detected
 				Expect(issues[0].ArgValue).NotTo(BeEmpty())
 			})
 

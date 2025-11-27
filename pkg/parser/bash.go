@@ -124,7 +124,7 @@ func (p *BashParser) FindDoubleQuotedBackticks(command string) ([]BacktickIssue,
 	// Walk the AST looking for CallExpr nodes
 	syntax.Walk(file, func(node syntax.Node) bool {
 		if call, ok := node.(*syntax.CallExpr); ok {
-			// Check each argument (skip command name at index 0)
+			// Check each argument (index 0 is command name)
 			for i, arg := range call.Args {
 				if hasDoubleQuotedBackticks(arg) {
 					issues = append(issues, BacktickIssue{
