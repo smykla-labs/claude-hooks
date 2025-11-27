@@ -113,9 +113,18 @@ func NewKoanfLoaderWithDirs(homeDir, workDir string) (*KoanfLoader, error) {
 
 // Load loads configuration from all sources with precedence.
 // Defaults → Global TOML → Project TOML → Env Vars → CLI Flags
+//
+// Rules have special merge semantics:
+// - Rules with the same name: project overrides global
+// - Rules with different names: combined (both included)
 func (l *KoanfLoader) Load(flags map[string]any) (*config.Config, error) {
 	// Reset koanf instance for fresh load
 	l.k = koanf.New(".")
+
+	// Track rules from each source for proper merging
+	var globalRules []config.RuleConfig
+
+	var projectRules []config.RuleConfig
 
 	// 1. Load defaults first (lowest priority)
 	defaults := defaultsToMap()
@@ -127,6 +136,8 @@ func (l *KoanfLoader) Load(flags map[string]any) (*config.Config, error) {
 	globalPath := l.GlobalConfigPath()
 	if err := l.loadTOMLFile(globalPath); err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("failed to load global config: %w", err)
+	} else if err == nil {
+		globalRules = l.extractRules()
 	}
 
 	// 3. Project config: .klaudiush/config.toml or klaudiush.toml
@@ -135,6 +146,8 @@ func (l *KoanfLoader) Load(flags map[string]any) (*config.Config, error) {
 		if err := l.loadTOMLFile(projectPath); err != nil {
 			return nil, fmt.Errorf("failed to load project config: %w", err)
 		}
+
+		projectRules = l.extractRules()
 	}
 
 	// 4. Environment variables: KLAUDIUSH_*
@@ -161,6 +174,15 @@ func (l *KoanfLoader) Load(flags map[string]any) (*config.Config, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
+	// Merge rules: project overrides global by name, different names are combined
+	mergedRules := mergeRules(globalRules, projectRules)
+
+	if cfg.Rules == nil {
+		cfg.Rules = &config.RulesConfig{}
+	}
+
+	cfg.Rules.Rules = mergedRules
+
 	// Validate
 	validator := NewValidator()
 	if err := validator.Validate(&cfg); err != nil {
@@ -168,6 +190,109 @@ func (l *KoanfLoader) Load(flags map[string]any) (*config.Config, error) {
 	}
 
 	return &cfg, nil
+}
+
+// extractRules extracts rules from the current koanf state.
+func (l *KoanfLoader) extractRules() []config.RuleConfig {
+	rulesSlice := l.k.Slices("rules.rules")
+	rules := make([]config.RuleConfig, 0, len(rulesSlice))
+
+	for _, ruleK := range rulesSlice {
+		var rule config.RuleConfig
+
+		// Extract rule fields from the slice element
+		rule.Name = ruleK.String("name")
+		rule.Description = ruleK.String("description")
+		rule.Priority = ruleK.Int("priority")
+
+		if ruleK.Exists("enabled") {
+			enabled := ruleK.Bool("enabled")
+			rule.Enabled = &enabled
+		}
+
+		// Extract match conditions
+		if ruleK.Exists("match") {
+			rule.Match = &config.RuleMatchConfig{
+				ValidatorType:  ruleK.String("match.validator_type"),
+				RepoPattern:    ruleK.String("match.repo_pattern"),
+				Remote:         ruleK.String("match.remote"),
+				BranchPattern:  ruleK.String("match.branch_pattern"),
+				FilePattern:    ruleK.String("match.file_pattern"),
+				ContentPattern: ruleK.String("match.content_pattern"),
+				CommandPattern: ruleK.String("match.command_pattern"),
+				ToolType:       ruleK.String("match.tool_type"),
+				EventType:      ruleK.String("match.event_type"),
+			}
+		}
+
+		// Extract action
+		if ruleK.Exists("action") {
+			rule.Action = &config.RuleActionConfig{
+				Type:      ruleK.String("action.type"),
+				Message:   ruleK.String("action.message"),
+				Reference: ruleK.String("action.reference"),
+			}
+		}
+
+		rules = append(rules, rule)
+	}
+
+	return rules
+}
+
+// mergeRules merges global and project rules.
+// Rules with the same name: project overrides global.
+// Rules with different names: combined (both included).
+func mergeRules(globalRules, projectRules []config.RuleConfig) []config.RuleConfig {
+	if len(globalRules) == 0 {
+		return projectRules
+	}
+
+	if len(projectRules) == 0 {
+		return globalRules
+	}
+
+	// Build a map of project rules by name for quick lookup
+	projectRulesByName := make(map[string]config.RuleConfig)
+
+	for _, rule := range projectRules {
+		if rule.Name != "" {
+			projectRulesByName[rule.Name] = rule
+		}
+	}
+
+	// Start with global rules, replacing with project rules where names match
+	merged := make([]config.RuleConfig, 0, len(globalRules)+len(projectRules))
+	seenNames := make(map[string]bool)
+
+	for _, globalRule := range globalRules {
+		if globalRule.Name != "" {
+			if projectRule, exists := projectRulesByName[globalRule.Name]; exists {
+				// Project rule overrides global rule with same name
+				merged = append(merged, projectRule)
+				seenNames[globalRule.Name] = true
+			} else {
+				merged = append(merged, globalRule)
+				seenNames[globalRule.Name] = true
+			}
+		} else {
+			// Rules without names are always included
+			merged = append(merged, globalRule)
+		}
+	}
+
+	// Add project rules that weren't in global
+
+	for _, projectRule := range projectRules {
+		if projectRule.Name != "" && !seenNames[projectRule.Name] {
+			merged = append(merged, projectRule)
+		} else if projectRule.Name == "" {
+			// Rules without names are always included
+			merged = append(merged, projectRule)
+		}
+	}
+
+	return merged
 }
 
 // loadTOMLFile loads a TOML configuration file with security checks.
@@ -318,6 +443,15 @@ func defaultsToMap() map[string]any {
 	return map[string]any{
 		"global":     defaultGlobalMap(),
 		"validators": defaultValidatorsMap(),
+		"rules":      defaultRulesMap(),
+	}
+}
+
+func defaultRulesMap() map[string]any {
+	return map[string]any{
+		"enabled":             true,
+		"stop_on_first_match": true,
+		"rules":               []any{},
 	}
 }
 

@@ -20,6 +20,21 @@ func DefaultConfig() *config.Config {
 	return &config.Config{
 		Global:     DefaultGlobalConfig(),
 		Validators: DefaultValidatorsConfig(),
+		Rules:      DefaultRulesConfig(),
+	}
+}
+
+// DefaultRulesConfig returns the default rules configuration.
+// Rules are enabled by default but no rules are pre-defined.
+// Users can add rules in project or global configuration.
+func DefaultRulesConfig() *config.RulesConfig {
+	enabled := true
+	stopOnFirstMatch := true
+
+	return &config.RulesConfig{
+		Enabled:          &enabled,
+		StopOnFirstMatch: &stopOnFirstMatch,
+		Rules:            []config.RuleConfig{},
 	}
 }
 

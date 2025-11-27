@@ -2,7 +2,8 @@
 
 ## Overview
 
-The rule engine provides dynamic validation configuration without modifying code. Rules allow users to define custom validation behavior via TOML configuration.
+The rule engine provides dynamic validation configuration without modifying code.
+Rules allow users to define custom validation behavior via TOML configuration.
 
 ## Package Structure
 
@@ -54,7 +55,7 @@ type Rule struct {
 
 Auto-detects pattern type based on syntax:
 
-**Regex indicators**: `^`, `$`, `(?`, `\\d`, `\\w`, `[`, `]`, `(`, `)`, `|`, `+`, `.*`, `.+`
+**Regex indicators**: `^`, `$`, `(?`, `\\d`, `\\w`, `[`, `]`, `(`, `)`, `|`, `+`
 
 **Glob patterns** (via `gobwas/glob`):
 
@@ -145,13 +146,66 @@ if result := adapter.CheckRules(ctx, hookCtx); result != nil {
 // Continue with built-in validation logic...
 ```
 
+## Configuration Schema (Phase 2)
+
+Rules are configured in TOML files.
+
+### Config Files
+
+- Global: `~/.klaudiush/config.toml`
+- Project: `.klaudiush/config.toml` or `klaudiush.toml`
+
+### TOML Schema
+
+```toml
+[rules]
+enabled = true
+stop_on_first_match = true
+
+[[rules.rules]]
+name = "block-origin-push"
+description = "Block pushes to origin remote"
+priority = 100
+enabled = true
+
+[rules.rules.match]
+validator_type = "git.push"
+repo_pattern = "**/myorg/**"
+remote = "origin"
+
+[rules.rules.action]
+type = "block"
+message = "Don't push to origin"
+reference = "GIT019"
+```
+
+### Config Precedence
+
+1. CLI Flags (highest)
+2. Environment Variables (`KLAUDIUSH_*`)
+3. Project Config
+4. Global Config
+5. Defaults (lowest)
+
+### Rule Merge Semantics
+
+- Rules with same name: project overrides global
+- Rules with different names: combined
+
+### Config Types
+
+- `pkg/config/rules.go`: RulesConfig, RuleConfig, RuleMatchConfig
+- `internal/config/factory/rules_factory.go`: Creates RuleEngine
+- `internal/config/koanf.go`: extractRules, mergeRules functions
+
 ## Test Coverage
 
-126 tests, 90% coverage.
+148 tests including Phase 1 (126) and Phase 2 (22).
 
 ## Dependencies
 
 - `github.com/gobwas/glob v0.2.3` - Glob pattern matching
+- `github.com/knadh/koanf/v2` - Configuration loading
 - `github.com/pkg/errors` - Error wrapping
 
 ## Related Files

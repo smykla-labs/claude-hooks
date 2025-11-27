@@ -11,6 +11,9 @@ type Config struct {
 
 	// Plugins contains configuration for external plugins.
 	Plugins *PluginConfig `json:"plugins,omitempty" koanf:"plugins" toml:"plugins"`
+
+	// Rules contains dynamic validation rule configuration.
+	Rules *RulesConfig `json:"rules,omitempty" koanf:"rules" toml:"rules"`
 }
 
 // ValidatorsConfig groups all validator configurations by category.
@@ -129,4 +132,13 @@ func (c *Config) GetPlugins() *PluginConfig {
 	}
 
 	return c.Plugins
+}
+
+// GetRules returns the rules config, creating it if it doesn't exist.
+func (c *Config) GetRules() *RulesConfig {
+	if c.Rules == nil {
+		c.Rules = &RulesConfig{}
+	}
+
+	return c.Rules
 }
