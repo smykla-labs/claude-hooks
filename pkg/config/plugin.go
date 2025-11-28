@@ -65,6 +65,10 @@ type PluginInstanceConfig struct {
 	// Config contains plugin-specific configuration passed to the plugin.
 	// The structure is defined by the plugin author.
 	Config map[string]any `json:"config,omitempty" koanf:"config" toml:"config"`
+
+	// ProjectRoot is the project root directory, set by the loader for path validation.
+	// This field is not serialized and is populated at runtime.
+	ProjectRoot string `json:"-" koanf:"-" toml:"-"`
 }
 
 // PluginType represents the type of plugin loader to use.

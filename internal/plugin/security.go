@@ -106,20 +106,33 @@ func resolvePath(path string) (string, error) {
 	return resolvedPath, nil
 }
 
-// evalSymlinksIfExists resolves symlinks if the path exists.
+// evalSymlinksIfExists resolves symlinks for the path.
+// If the file doesn't exist, it resolves symlinks on the parent directory
+// and joins with the filename to ensure consistent path representation.
 func evalSymlinksIfExists(path string) (string, error) {
 	_, statErr := os.Stat(path)
-	if statErr != nil {
-		// File doesn't exist yet; skip symlink resolution
-		return path, nil //nolint:nilerr // intentional: non-existent files don't need symlink resolution
+	if statErr == nil {
+		// File exists, resolve the full path
+		realPath, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			return "", errors.Wrap(err, "failed to evaluate symlinks")
+		}
+
+		return realPath, nil
 	}
 
-	realPath, err := filepath.EvalSymlinks(path)
+	// File doesn't exist; resolve symlinks on the parent directory
+	// This ensures consistent path representation even for new files
+	parentDir := filepath.Dir(path)
+	fileName := filepath.Base(path)
+
+	realParentDir, err := filepath.EvalSymlinks(parentDir)
 	if err != nil {
-		return "", errors.Wrap(err, "failed to evaluate symlinks")
+		// Parent directory doesn't exist either; return original path
+		return path, nil //nolint:nilerr // intentional: return original if parent doesn't exist
 	}
 
-	return realPath, nil
+	return filepath.Join(realParentDir, fileName), nil
 }
 
 // isPathInAllowedDirs checks if the resolved path is within any allowed directory.
@@ -143,6 +156,14 @@ func isPathUnderDir(resolvedPath, dir string) bool {
 	absDir, err := filepath.Abs(expandedDir)
 	if err != nil {
 		return false
+	}
+
+	// Resolve symlinks on the allowed directory if it exists
+	// This ensures consistency with the resolved path (which also has symlinks resolved)
+	if _, statErr := os.Stat(absDir); statErr == nil {
+		if realDir, evalErr := filepath.EvalSymlinks(absDir); evalErr == nil {
+			absDir = realDir
+		}
 	}
 
 	if !strings.HasSuffix(absDir, string(filepath.Separator)) {

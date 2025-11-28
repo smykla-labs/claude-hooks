@@ -126,7 +126,7 @@ var _ = Describe("Security", func() {
 		})
 
 		Context("with symlinks", func() {
-			It("should resolve symlinks and check real path", func() {
+			It("should resolve symlinks consistently on both path and allowed dirs", func() {
 				realDir := filepath.Join(tempDir, "real")
 				err := os.MkdirAll(realDir, 0o755)
 				Expect(err).NotTo(HaveOccurred())
@@ -141,13 +141,38 @@ var _ = Describe("Security", func() {
 
 				linkPath := filepath.Join(linkDir, "plugin.so")
 
-				// Should fail when real path is not in allowed dirs
+				// Both should succeed because symlinks are resolved on BOTH sides
+				// This is important for macOS where /var -> /private/var
 				err = plugin.ValidatePath(linkPath, []string{linkDir})
-				Expect(err).To(HaveOccurred())
+				Expect(err).NotTo(HaveOccurred())
 
-				// Should succeed when real path is in allowed dirs
 				err = plugin.ValidatePath(linkPath, []string{realDir})
 				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should reject symlinks pointing outside allowed directories", func() {
+				// Create a directory outside the allowed area
+				outsideDir := filepath.Join(tempDir, "outside")
+				err := os.MkdirAll(outsideDir, 0o755)
+				Expect(err).NotTo(HaveOccurred())
+
+				outsidePlugin := filepath.Join(outsideDir, "plugin.so")
+				err = os.WriteFile(outsidePlugin, []byte("test"), 0o755)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Create allowed directory
+				allowedDir := filepath.Join(tempDir, "allowed")
+				err = os.MkdirAll(allowedDir, 0o755)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Create symlink inside allowed dir pointing to outside
+				linkPath := filepath.Join(allowedDir, "evil-link.so")
+				err = os.Symlink(outsidePlugin, linkPath)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Should fail - symlink resolves to outside the allowed dir
+				err = plugin.ValidatePath(linkPath, []string{allowedDir})
+				Expect(err).To(HaveOccurred())
 			})
 		})
 
