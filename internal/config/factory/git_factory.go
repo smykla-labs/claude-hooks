@@ -82,8 +82,17 @@ func (f *GitValidatorFactory) CreateValidators(cfg *config.Config) []ValidatorWi
 func (f *GitValidatorFactory) createAddValidator(
 	cfg *config.AddValidatorConfig,
 ) ValidatorWithPredicate {
+	var ruleAdapter *rules.RuleValidatorAdapter
+	if f.ruleEngine != nil {
+		ruleAdapter = rules.NewRuleValidatorAdapter(
+			f.ruleEngine,
+			rules.ValidatorGitAdd,
+			rules.WithAdapterLogger(f.log),
+		)
+	}
+
 	return ValidatorWithPredicate{
-		Validator: gitvalidators.NewAddValidator(f.log, f.getGitRunner(), cfg),
+		Validator: gitvalidators.NewAddValidator(f.log, f.getGitRunner(), cfg, ruleAdapter),
 		Predicate: validator.And(
 			validator.EventTypeIs(hook.EventTypePreToolUse),
 			validator.GitSubcommandIs("add"),

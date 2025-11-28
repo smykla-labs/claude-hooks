@@ -248,6 +248,8 @@ When adding rule support to validators, the pattern is:
 1. **Validator struct**: Add optional `ruleAdapter *rules.RuleValidatorAdapter` field
 2. **Constructor**: Accept `ruleAdapter` as last parameter (can be nil for backward compatibility)
 3. **Validate()**: Check rules first, return early if matched, otherwise continue with built-in logic
+   - **Important**: Change signature from `Validate(_ context.Context, ...)` to `Validate(ctx context.Context, ...)` - context must be passed to `CheckRules()`
 4. **Factory**: Create adapter only if `f.ruleEngine != nil`, pass correct `ValidatorType` constant
+5. **Tests**: Add `nil` as additional parameter in constructor calls (e.g., `NewValidator(log, runner, cfg, nil)`)
 
 **Key insight**: Nil ruleAdapter is valid - allows gradual migration without breaking existing code. Tests pass nil, production code creates adapter when rule engine is configured.

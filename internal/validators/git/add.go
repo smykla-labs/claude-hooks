@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/smykla-labs/klaudiush/internal/rules"
 	"github.com/smykla-labs/klaudiush/internal/templates"
 	"github.com/smykla-labs/klaudiush/internal/validator"
 	"github.com/smykla-labs/klaudiush/pkg/config"
@@ -25,8 +26,9 @@ const (
 // AddValidator validates git add commands to block files matching blocked patterns from being staged
 type AddValidator struct {
 	validator.BaseValidator
-	gitRunner GitRunner
-	config    *config.AddValidatorConfig
+	gitRunner   GitRunner
+	config      *config.AddValidatorConfig
+	ruleAdapter *rules.RuleValidatorAdapter
 }
 
 // NewAddValidator creates a new GitAddValidator instance
@@ -34,6 +36,7 @@ func NewAddValidator(
 	log logger.Logger,
 	gitRunner GitRunner,
 	cfg *config.AddValidatorConfig,
+	ruleAdapter *rules.RuleValidatorAdapter,
 ) *AddValidator {
 	if gitRunner == nil {
 		gitRunner = NewGitRunner()
@@ -43,13 +46,21 @@ func NewAddValidator(
 		BaseValidator: *validator.NewBaseValidator("validate-git-add", log),
 		gitRunner:     gitRunner,
 		config:        cfg,
+		ruleAdapter:   ruleAdapter,
 	}
 }
 
 // Validate checks if git add command includes files from tmp/ directory
-func (v *AddValidator) Validate(_ context.Context, hookCtx *hook.Context) *validator.Result {
+func (v *AddValidator) Validate(ctx context.Context, hookCtx *hook.Context) *validator.Result {
 	log := v.Logger()
 	log.Debug("Running git add validation")
+
+	// Check rules first if rule adapter is configured
+	if v.ruleAdapter != nil {
+		if result := v.ruleAdapter.CheckRules(ctx, hookCtx); result != nil {
+			return result
+		}
+	}
 
 	// Check if in git repository
 	if !v.gitRunner.IsInRepo() {

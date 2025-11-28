@@ -23,7 +23,7 @@ var _ = Describe("GitAddValidator", func() {
 	BeforeEach(func() {
 		log = logger.NewNoOpLogger()
 		fakeGit = gitpkg.NewFakeRunner()
-		val = git.NewAddValidator(log, fakeGit, nil)
+		val = git.NewAddValidator(log, fakeGit, nil, nil)
 	})
 
 	Describe("Name", func() {
