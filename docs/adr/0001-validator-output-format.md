@@ -76,9 +76,9 @@ Example:
 
 | Icon | Unicode | Severity | Semantics        |
 |:----:|:--------|:---------|:-----------------|
-|  ✖   | U+2716  | Error    | Blocks operation |
-|  ⚠   | U+26A0  | Warning  | Allows, warns    |
-|  ℹ   | U+2139  | Info     | Informational    |
+| `✖`  | U+2716  | Error    | Blocks operation |
+| `⚠`  | U+26A0  | Warning  | Allows, warns    |
+| `ℹ`  | U+2139  | Info     | Informational    |
 
 ### Suggestions (Copy-Pasteable Fixes)
 
