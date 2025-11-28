@@ -212,3 +212,35 @@ reference = "GIT019"
 
 - Investigation docs: `tmp/investigations/dynamic-validation-config/`
 - Main plan: `.claude/plans/compiled-bouncing-river.md`
+
+## Implementation Status
+
+### Phase 1: Core Rule Engine ✅ Complete
+
+Implemented in Session 2 (2025-11-27):
+
+- Pattern system with auto-detection
+- All matchers (9 types + composites)
+- Registry with priority sorting
+- Evaluator with first-match semantics
+- RuleEngine main interface
+- ValidatorAdapter for integration
+- 126 tests, 90% coverage
+
+### Phase 2: Configuration Schema ✅ Complete
+
+Verified complete in Session 3 (2025-11-27):
+
+- `pkg/config/rules.go` schema created
+- Root config extended with Rules field
+- Validator config extended with RulesEnabled field
+- TOML loading with deep merge implemented
+- Factory creates RuleEngine via RulesFactory
+- 22 additional tests for config loading
+- All acceptance criteria met
+
+**Kong/Kuma Default Rules**: Deferred to Phase 3 to be added alongside PushValidator migration.
+
+### Next Phase
+
+**Phase 3**: Push Validator Migration - Remove hardcoded Kong/Kuma logic, add default rules, integrate rule engine with PushValidator.
