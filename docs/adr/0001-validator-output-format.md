@@ -40,13 +40,21 @@ For validators that report issues at specific file locations:
 
 ```text
   Line {N} {severity} {rule}: {actionable message}
+  Lines {N}-{M} {severity} {rule}: {actionable message}
 ```
 
-Example:
+Example (single line):
 
 ```text
   Line 1 ✖ SC2148: Add a shebang (#!/bin/bash) at the start of the script
   Line 30 ⚠ SC2034: PROVIDER_ENV_SETUP_CMD is unused - export it or remove it
+```
+
+Example (line range):
+
+```text
+  Lines 15-20 ✖ MD055: Align table columns consistently
+  Lines 42-47 ⚠ SEC001: Potential API key detected in multi-line string
 ```
 
 ### Non-Line-Based Findings
@@ -67,10 +75,10 @@ Example:
 ### Severity Icons
 
 | Icon | Unicode | Severity | Semantics        |
-|:-----|:--------|:---------|:-----------------|
-| ✖    | U+2716  | Error    | Blocks operation |
-| ⚠    | U+26A0  | Warning  | Allows, warns    |
-| ℹ    | U+2139  | Info     | Informational    |
+|:----:|:--------|:---------|:-----------------|
+|  ✖   | U+2716  | Error    | Blocks operation |
+|  ⚠   | U+26A0  | Warning  | Allows, warns    |
+|  ℹ   | U+2139  | Info     | Informational    |
 
 ### Suggestions (Copy-Pasteable Fixes)
 
