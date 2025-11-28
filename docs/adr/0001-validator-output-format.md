@@ -6,8 +6,7 @@ Proposed
 
 ## Context
 
-klaudiush validators currently produce inconsistent output formats across
-different validation types:
+klaudiush validators currently produce inconsistent output formats across different validation types:
 
 - **Git validators** emit structured messages with error codes and fix hints
 - **File validators** forward raw linter output (shellcheck, actionlint, tflint)
@@ -21,8 +20,7 @@ This inconsistency creates several problems:
 3. **Automation** - Difficult to programmatically parse varied formats
 4. **Maintenance** - Each validator implements its own formatting logic
 
-The current `Result` struct provides reference URLs and fix hints, but the
-actual output formatting is scattered and inconsistent.
+The current `Result` struct provides reference URLs and fix hints, but the actual output formatting is scattered and inconsistent.
 
 ## Decision
 
