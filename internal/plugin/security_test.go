@@ -76,6 +76,16 @@ var _ = Describe("Security", func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
+			It("should accept when path equals allowed directory exactly", func() {
+				allowedDir := filepath.Join(tempDir, "plugins")
+				err := os.MkdirAll(allowedDir, 0o755)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Path equals allowed directory (no subdirectory or file)
+				err = plugin.ValidatePath(allowedDir, []string{allowedDir})
+				Expect(err).NotTo(HaveOccurred())
+			})
+
 			It("should accept when no allowed directories specified", func() {
 				pluginPath := filepath.Join(tempDir, "plugin.so")
 

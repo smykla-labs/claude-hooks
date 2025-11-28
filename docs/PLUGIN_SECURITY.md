@@ -25,9 +25,9 @@ directories.
 mkdir -p ~/.klaudiush/plugins
 mkdir -p .klaudiush/plugins
 
-# Install plugins with secure permissions
+# Install plugins with secure permissions (500 = read+execute for owner)
 cp my-plugin.so ~/.klaudiush/plugins/
-chmod 600 ~/.klaudiush/plugins/my-plugin.so
+chmod 500 ~/.klaudiush/plugins/my-plugin.so
 ```
 
 ## Path Validation

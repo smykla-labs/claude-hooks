@@ -384,6 +384,48 @@ var _ = Describe("GRPCLoader", func() {
 				Expect(err.Error()).To(ContainSubstring("failed to load TLS certificate"))
 				Expect(p).To(BeNil())
 			})
+
+			It("should error when only CertFile is provided without KeyFile", func() {
+				enabled := true
+				cfg := &config.PluginInstanceConfig{
+					Name:    "test-plugin",
+					Type:    config.PluginTypeGRPC,
+					Address: serverAddr,
+					TLS: &config.TLSConfig{
+						Enabled:  &enabled,
+						CertFile: "/path/to/cert.pem",
+						// KeyFile missing
+					},
+				}
+
+				p, err := loader.Load(cfg)
+				Expect(err).To(HaveOccurred())
+				Expect(
+					err.Error(),
+				).To(ContainSubstring("both cert_file and key_file must be specified"))
+				Expect(p).To(BeNil())
+			})
+
+			It("should error when only KeyFile is provided without CertFile", func() {
+				enabled := true
+				cfg := &config.PluginInstanceConfig{
+					Name:    "test-plugin",
+					Type:    config.PluginTypeGRPC,
+					Address: serverAddr,
+					TLS: &config.TLSConfig{
+						Enabled: &enabled,
+						KeyFile: "/path/to/key.pem",
+						// CertFile missing
+					},
+				}
+
+				p, err := loader.Load(cfg)
+				Expect(err).To(HaveOccurred())
+				Expect(
+					err.Error(),
+				).To(ContainSubstring("both cert_file and key_file must be specified"))
+				Expect(p).To(BeNil())
+			})
 		})
 	})
 

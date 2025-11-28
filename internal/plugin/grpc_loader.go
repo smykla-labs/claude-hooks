@@ -186,6 +186,11 @@ func (l *GRPCLoader) getOrCreateConnection(
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	// Check closed flag after acquiring lock to prevent race with Close()
+	if l.closed {
+		return nil, ErrLoaderClosed
+	}
+
 	// Double-check after acquiring write lock
 	if existingConn, exists := l.connections[address]; exists {
 		return existingConn, nil
@@ -318,8 +323,17 @@ func (*GRPCLoader) buildTLSCredentials(
 		tlsConfig.RootCAs = certPool
 	}
 
+	// Validate mTLS configuration - both files must be specified together
+	hasCertFile := cfg.CertFile != ""
+	hasKeyFile := cfg.KeyFile != ""
+
+	if hasCertFile != hasKeyFile {
+		return nil, errors.Wrap(ErrTLSCertLoad,
+			"both cert_file and key_file must be specified for client certificate authentication")
+	}
+
 	// Load client certificate if specified (mTLS)
-	if cfg.CertFile != "" && cfg.KeyFile != "" {
+	if hasCertFile && hasKeyFile {
 		cert, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
 		if err != nil {
 			return nil, errors.Wrapf(ErrTLSCertLoad,

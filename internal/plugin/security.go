@@ -166,11 +166,19 @@ func isPathUnderDir(resolvedPath, dir string) bool {
 		}
 	}
 
-	if !strings.HasSuffix(absDir, string(filepath.Separator)) {
-		absDir += string(filepath.Separator)
+	// Normalize directory path with trailing separator
+	normalizedDir := absDir
+	if !strings.HasSuffix(normalizedDir, string(filepath.Separator)) {
+		normalizedDir += string(filepath.Separator)
 	}
 
-	return strings.HasPrefix(resolvedPath, absDir)
+	// Check for exact directory match (path equals allowed directory)
+	if resolvedPath == absDir ||
+		resolvedPath == strings.TrimSuffix(normalizedDir, string(filepath.Separator)) {
+		return true
+	}
+
+	return strings.HasPrefix(resolvedPath, normalizedDir)
 }
 
 // ValidateExtension checks if the file has an allowed extension.
