@@ -48,8 +48,7 @@ func (b *RegistryBuilder) Build(cfg *config.Config) *validator.Registry {
 func (b *RegistryBuilder) BuildWithRuleEngine(
 	cfg *config.Config,
 ) (*validator.Registry, *rules.RuleEngine, error) {
-	registry := b.Build(cfg)
-
+	// Create rule engine first
 	ruleEngine, err := b.rulesFactory.CreateRuleEngine(cfg)
 	if err != nil {
 		return nil, nil, err
@@ -59,7 +58,12 @@ func (b *RegistryBuilder) BuildWithRuleEngine(
 		b.log.Debug("rule engine created",
 			"rule_count", ruleEngine.Size(),
 		)
+		// Set rule engine in factory so validators can use it
+		b.factory.SetRuleEngine(ruleEngine)
 	}
+
+	// Build registry with validators that have rule support
+	registry := b.Build(cfg)
 
 	return registry, ruleEngine, nil
 }

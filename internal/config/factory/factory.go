@@ -2,6 +2,7 @@
 package factory
 
 import (
+	"github.com/smykla-labs/klaudiush/internal/rules"
 	"github.com/smykla-labs/klaudiush/internal/validator"
 	"github.com/smykla-labs/klaudiush/pkg/config"
 	"github.com/smykla-labs/klaudiush/pkg/logger"
@@ -15,6 +16,9 @@ type ValidatorWithPredicate struct {
 
 // ValidatorFactory creates validators from configuration.
 type ValidatorFactory interface {
+	// SetRuleEngine sets the rule engine for all factories.
+	SetRuleEngine(engine *rules.RuleEngine)
+
 	// CreateGitValidators creates all git validators from config.
 	CreateGitValidators(cfg *config.Config) []ValidatorWithPredicate
 
@@ -57,6 +61,12 @@ func NewValidatorFactory(log logger.Logger) *DefaultValidatorFactory {
 		shellFactory:        NewShellValidatorFactory(log),
 		pluginFactory:       NewPluginValidatorFactory(log),
 	}
+}
+
+// SetRuleEngine sets the rule engine for all factories.
+func (f *DefaultValidatorFactory) SetRuleEngine(engine *rules.RuleEngine) {
+	f.gitFactory.SetRuleEngine(engine)
+	// TODO: Set rule engine for other factories as they are migrated
 }
 
 // CreateGitValidators creates all git validators from config.

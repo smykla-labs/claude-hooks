@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/smykla-labs/klaudiush/internal/rules"
 	"github.com/smykla-labs/klaudiush/internal/templates"
 	"github.com/smykla-labs/klaudiush/internal/validator"
 	"github.com/smykla-labs/klaudiush/pkg/config"
@@ -20,8 +21,9 @@ const (
 // PushValidator validates git push commands
 type PushValidator struct {
 	validator.BaseValidator
-	gitRunner GitRunner
-	config    *config.PushValidatorConfig
+	gitRunner   GitRunner
+	config      *config.PushValidatorConfig
+	ruleAdapter *rules.RuleValidatorAdapter
 }
 
 // NewPushValidator creates a new PushValidator instance
@@ -29,6 +31,7 @@ func NewPushValidator(
 	log logger.Logger,
 	gitRunner GitRunner,
 	cfg *config.PushValidatorConfig,
+	ruleAdapter *rules.RuleValidatorAdapter,
 ) *PushValidator {
 	if gitRunner == nil {
 		gitRunner = NewGitRunner()
@@ -38,6 +41,7 @@ func NewPushValidator(
 		BaseValidator: *validator.NewBaseValidator("validate-git-push", log),
 		gitRunner:     gitRunner,
 		config:        cfg,
+		ruleAdapter:   ruleAdapter,
 	}
 }
 
@@ -47,8 +51,15 @@ func (*PushValidator) Name() string {
 }
 
 // Validate validates git push commands
-func (v *PushValidator) Validate(_ context.Context, hookCtx *hook.Context) *validator.Result {
+func (v *PushValidator) Validate(ctx context.Context, hookCtx *hook.Context) *validator.Result {
 	log := v.Logger()
+
+	// Check rules first if rule adapter is configured
+	if v.ruleAdapter != nil {
+		if result := v.ruleAdapter.CheckRules(ctx, hookCtx); result != nil {
+			return result
+		}
+	}
 
 	command := hookCtx.GetCommand()
 	if command == "" {
@@ -102,19 +113,7 @@ func (v *PushValidator) validatePushCommand(gitCmd *parser.GitCommand) *validato
 		return validator.Pass()
 	}
 
-	if result := v.validateRemoteExists(remote); !result.Passed {
-		return result
-	}
-
-	repoRoot, err := v.gitRunner.GetRepoRoot()
-	if err != nil {
-		log.Debug("failed to get repo root", "error", err)
-		return validator.Pass()
-	}
-
-	projectType := detectProjectType(repoRoot)
-
-	return v.validateProjectSpecificRules(projectType, remote)
+	return v.validateRemoteExists(remote)
 }
 
 // extractRemote extracts the remote name from a git push command
@@ -187,56 +186,6 @@ func (*PushValidator) formatRemoteNotFoundError(remote string, remotes map[strin
 			Remotes: remoteInfos,
 		},
 	)
-}
-
-// detectProjectType detects the project type based on the repo root path
-func detectProjectType(repoRoot string) string {
-	if strings.Contains(repoRoot, "/kumahq/kuma") {
-		return "kumahq/kuma"
-	}
-
-	if strings.Contains(repoRoot, "/kong/") || strings.Contains(repoRoot, "/Kong/") {
-		return "kong-org"
-	}
-
-	return ""
-}
-
-// validateProjectSpecificRules validates project-specific push rules
-func (v *PushValidator) validateProjectSpecificRules(projectType, remote string) *validator.Result {
-	switch projectType {
-	case "kong-org":
-		return v.validateKongOrgPush(remote)
-	case "kumahq/kuma":
-		return v.validateKumaPush(remote)
-	default:
-		return validator.Pass()
-	}
-}
-
-// validateKongOrgPush validates Kong organization push rules
-func (*PushValidator) validateKongOrgPush(remote string) *validator.Result {
-	if remote == "origin" {
-		message := templates.MustExecute(templates.PushKongOrgTemplate, nil)
-		return validator.FailWithRef(validator.RefGitKongOrgPush, message)
-	}
-
-	return validator.Pass()
-}
-
-// validateKumaPush validates kumahq/kuma push rules
-func (*PushValidator) validateKumaPush(remote string) *validator.Result {
-	if remote == "upstream" {
-		message := templates.MustExecute(templates.PushKumaWarningTemplate, nil)
-
-		return &validator.Result{
-			Passed:      false,
-			Message:     message,
-			ShouldBlock: false,
-		}
-	}
-
-	return validator.Pass()
 }
 
 // Category returns the validator category for parallel execution.

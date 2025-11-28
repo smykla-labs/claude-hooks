@@ -5,7 +5,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 )
 
 // CompiledRule represents a rule with its pre-compiled matcher.

@@ -155,6 +155,128 @@ var _ = Describe("PushValidator", func() {
 			})
 		})
 
+		Context("Kong organization projects", func() {
+			BeforeEach(func() {
+				fakeGit.RepoRoot = "/home/user/projects/github.com/kong/kong-mesh"
+			})
+
+			It("blocks push to origin remote", func() {
+				ctx := createContext("git push origin feature-branch")
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeFalse())
+				Expect(result.Reference).To(Equal(validatorpkg.RefGitKongOrgPush))
+				Expect(result.FixHint).To(ContainSubstring("upstream"))
+				Expect(result.Message).To(ContainSubstring("Git push validation failed"))
+				Expect(
+					result.Message,
+				).To(ContainSubstring("Kong org projects should push to 'upstream' remote"))
+				Expect(result.Message).To(ContainSubstring("'origin' is your fork"))
+				Expect(result.Message).To(ContainSubstring("git push upstream branch-name"))
+			})
+
+			It("allows push to upstream remote", func() {
+				ctx := createContext("git push upstream feature-branch")
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeTrue())
+			})
+
+			It("blocks origin with --force flag", func() {
+				ctx := createContext("git push --force origin feature-branch")
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeFalse())
+				Expect(
+					result.Message,
+				).To(ContainSubstring("Kong org projects should push to 'upstream' remote"))
+			})
+
+			It("detects Kong with capital K", func() {
+				fakeGit.RepoRoot = "/home/user/projects/github.com/Kong/kong-mesh"
+				ctx := createContext("git push origin feature-branch")
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeFalse())
+			})
+		})
+
+		Context("kumahq/kuma projects", func() {
+			BeforeEach(func() {
+				fakeGit.RepoRoot = "/home/user/projects/github.com/kumahq/kuma"
+			})
+
+			It("warns when pushing to upstream", func() {
+				ctx := createContext("git push upstream feature-branch")
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeFalse())
+				Expect(result.ShouldBlock).To(BeFalse())
+				Expect(
+					result.Message,
+				).To(ContainSubstring("Warning: Pushing to 'upstream' remote in kumahq/kuma"))
+				Expect(
+					result.Message,
+				).To(ContainSubstring("This should only be done when explicitly intended"))
+				Expect(
+					result.Message,
+				).To(ContainSubstring("Normal workflow: push to 'origin' (your fork)"))
+			})
+
+			It("allows push to origin without warning", func() {
+				ctx := createContext("git push origin feature-branch")
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeTrue())
+				Expect(result.Message).To(BeEmpty())
+			})
+
+			It("warns for upstream with force flag", func() {
+				ctx := createContext("git push --force-with-lease upstream feature-branch")
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeFalse())
+				Expect(result.Message).To(ContainSubstring("Warning"))
+			})
+		})
+
+		Context("chained commands", func() {
+			It("validates all push commands in chain", func() {
+				fakeGit.RepoRoot = "/home/user/projects/github.com/kong/kong-mesh"
+				ctx := createContext(`git add . && git commit -m "fix" && git push origin main`)
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeFalse())
+				Expect(result.Message).To(ContainSubstring("Kong org projects"))
+			})
+
+			It("passes when all commands valid", func() {
+				ctx := createContext(`git add . && git commit -m "fix" && git push upstream main`)
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeTrue())
+			})
+
+			It("validates first failing command in chain", func() {
+				ctx := createContext("git push badremote main && git push origin main")
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeFalse())
+				Expect(result.Message).To(ContainSubstring("Remote 'badremote' does not exist"))
+			})
+		})
+
+		Context("complex command formats", func() {
+			It("handles subshell", func() {
+				fakeGit.RepoRoot = "/home/user/projects/github.com/kong/kong-mesh"
+				ctx := createContext("(cd /some/dir && git push origin main)")
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeFalse())
+			})
+
+			It("handles OR chain", func() {
+				ctx := createContext("git push upstream main || echo failed")
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeTrue())
+			})
+
+			It("handles semicolon separator", func() {
+				ctx := createContext("git status; git push upstream main")
+				result := validator.Validate(context.Background(), ctx)
+				Expect(result.Passed).To(BeTrue())
+			})
+		})
+
 		Context("edge cases", func() {
 			It("passes for empty command", func() {
 				ctx := createContext("")

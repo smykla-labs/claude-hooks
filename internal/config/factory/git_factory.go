@@ -2,6 +2,7 @@ package factory
 
 import (
 	"github.com/smykla-labs/klaudiush/internal/git"
+	"github.com/smykla-labs/klaudiush/internal/rules"
 	"github.com/smykla-labs/klaudiush/internal/validator"
 	gitvalidators "github.com/smykla-labs/klaudiush/internal/validators/git"
 	"github.com/smykla-labs/klaudiush/pkg/config"
@@ -11,9 +12,10 @@ import (
 
 // GitValidatorFactory creates git validators from configuration.
 type GitValidatorFactory struct {
-	cfg       *config.Config
-	log       logger.Logger
-	gitRunner git.Runner
+	cfg        *config.Config
+	log        logger.Logger
+	gitRunner  git.Runner
+	ruleEngine *rules.RuleEngine
 }
 
 // NewGitValidatorFactory creates a new GitValidatorFactory.
@@ -33,6 +35,11 @@ func (f *GitValidatorFactory) getGitRunner() git.Runner {
 	}
 
 	return f.gitRunner
+}
+
+// SetRuleEngine sets the rule engine for the factory.
+func (f *GitValidatorFactory) SetRuleEngine(engine *rules.RuleEngine) {
+	f.ruleEngine = engine
 }
 
 // CreateValidators creates all git validators based on configuration.
@@ -111,8 +118,17 @@ func (f *GitValidatorFactory) createCommitValidator(
 func (f *GitValidatorFactory) createPushValidator(
 	cfg *config.PushValidatorConfig,
 ) ValidatorWithPredicate {
+	var ruleAdapter *rules.RuleValidatorAdapter
+	if f.ruleEngine != nil {
+		ruleAdapter = rules.NewRuleValidatorAdapter(
+			f.ruleEngine,
+			rules.ValidatorGitPush,
+			rules.WithAdapterLogger(f.log),
+		)
+	}
+
 	return ValidatorWithPredicate{
-		Validator: gitvalidators.NewPushValidator(f.log, f.getGitRunner(), cfg),
+		Validator: gitvalidators.NewPushValidator(f.log, f.getGitRunner(), cfg, ruleAdapter),
 		Predicate: validator.And(
 			validator.EventTypeIs(hook.EventTypePreToolUse),
 			validator.GitSubcommandIs("push"),

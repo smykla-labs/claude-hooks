@@ -168,6 +168,8 @@ Framework: Ginkgo/Gomega. 336 tests. Run: `mise exec -- go test -v ./pkg/parser 
 
 **Linters** (`.golangci.yml`): Nil safety (nilnesserr, govet), completeness (exhaustive, gochecksumtype), quality (gocognit, goconst, cyclop, dupl)
 
+**Error Handling**: NEVER use `errors` or `github.com/pkg/errors`. ALWAYS use `github.com/cockroachdb/errors` for error creation and wrapping
+
 ## Exit Codes
 
 - `0`: Allowed (pass/warn/no match)
