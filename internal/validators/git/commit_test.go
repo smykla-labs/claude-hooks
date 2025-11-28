@@ -26,7 +26,7 @@ var _ = Describe("CommitValidator", func() {
 		fakeGit = gitpkg.NewFakeRunner()
 		// By default, set up fake to have staged files so staging check passes
 		fakeGit.StagedFiles = []string{"file.txt"}
-		validator = git.NewCommitValidator(log, fakeGit, nil)
+		validator = git.NewCommitValidator(log, fakeGit, nil, nil)
 	})
 
 	Describe("Flag validation", func() {
@@ -415,7 +415,7 @@ var _ = Describe("CommitValidator", func() {
 						},
 					}
 
-					strictValidator := git.NewCommitValidator(log, fakeGit, cfg)
+					strictValidator := git.NewCommitValidator(log, fakeGit, cfg, nil)
 
 					ctx := &hook.Context{
 						EventType: hook.EventTypePreToolUse,

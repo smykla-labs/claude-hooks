@@ -241,6 +241,13 @@ Verified complete in Session 3 (2025-11-27):
 
 **Kong/Kuma Default Rules**: Deferred to Phase 3 to be added alongside PushValidator migration.
 
-### Next Phase
+## Validator Integration Pattern
 
-**Phase 3**: Push Validator Migration - Remove hardcoded Kong/Kuma logic, add default rules, integrate rule engine with PushValidator.
+When adding rule support to validators, the pattern is:
+
+1. **Validator struct**: Add optional `ruleAdapter *rules.RuleValidatorAdapter` field
+2. **Constructor**: Accept `ruleAdapter` as last parameter (can be nil for backward compatibility)
+3. **Validate()**: Check rules first, return early if matched, otherwise continue with built-in logic
+4. **Factory**: Create adapter only if `f.ruleEngine != nil`, pass correct `ValidatorType` constant
+
+**Key insight**: Nil ruleAdapter is valid - allows gradual migration without breaking existing code. Tests pass nil, production code creates adapter when rule engine is configured.

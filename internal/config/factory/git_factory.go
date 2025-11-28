@@ -106,8 +106,17 @@ func (f *GitValidatorFactory) createNoVerifyValidator(
 func (f *GitValidatorFactory) createCommitValidator(
 	cfg *config.CommitValidatorConfig,
 ) ValidatorWithPredicate {
+	var ruleAdapter *rules.RuleValidatorAdapter
+	if f.ruleEngine != nil {
+		ruleAdapter = rules.NewRuleValidatorAdapter(
+			f.ruleEngine,
+			rules.ValidatorGitCommit,
+			rules.WithAdapterLogger(f.log),
+		)
+	}
+
 	return ValidatorWithPredicate{
-		Validator: gitvalidators.NewCommitValidator(f.log, f.getGitRunner(), cfg),
+		Validator: gitvalidators.NewCommitValidator(f.log, f.getGitRunner(), cfg, ruleAdapter),
 		Predicate: validator.And(
 			validator.EventTypeIs(hook.EventTypePreToolUse),
 			validator.GitSubcommandIs("commit"),
