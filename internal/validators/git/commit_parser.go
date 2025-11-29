@@ -13,7 +13,9 @@ var footerPattern = regexp.MustCompile(`^([A-Za-z0-9]+(?:[ -][A-Za-z0-9]+)*):\s*
 
 // titleRegex matches conventional commit title format: type(scope)!: description
 // Capture groups: 1=type, 2=(scope) with parens, 3=scope only, 4=!, 5=description
-var titleRegex = regexp.MustCompile(`^(\w+)(\(([a-zA-Z0-9_]+(?:[/-][a-zA-Z0-9_]+)*)\))?(!)?:\s+(.+)$`)
+var titleRegex = regexp.MustCompile(
+	`^(\w+)(\(([a-zA-Z0-9_]+(?:[/-][a-zA-Z0-9_]+)*)\))?(!)?:\s+(.+)$`,
+)
 
 // titleParseResult holds the parsed components of a conventional commit title.
 type titleParseResult struct {
