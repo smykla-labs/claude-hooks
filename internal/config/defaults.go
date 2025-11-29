@@ -295,6 +295,10 @@ func DefaultMarkdownValidatorConfig() *config.MarkdownValidatorConfig {
 		CodeBlockFormatting: &codeBlockFormatting,
 		ListFormatting:      &listFormatting,
 		UseMarkdownlint:     &useMarkdownlint,
+		MarkdownlintRules: map[string]bool{
+			"MD013": false, // line-length disabled by default
+			"MD034": false, // bare URLs disabled by default (common in code blocks)
+		},
 	}
 }
 
