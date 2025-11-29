@@ -16,7 +16,6 @@ require (
 	github.com/knadh/koanf/providers/env/v2 v2.0.0
 	github.com/knadh/koanf/providers/file v1.2.0
 	github.com/knadh/koanf/v2 v2.3.0
-	github.com/mattn/go-isatty v0.0.20
 	github.com/mattn/go-runewidth v0.0.19
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
@@ -25,6 +24,7 @@ require (
 	github.com/spf13/cobra v1.10.1
 	go.uber.org/mock v0.6.0
 	golang.org/x/sync v0.18.0
+	golang.org/x/term v0.37.0
 	google.golang.org/grpc v1.77.0
 	google.golang.org/protobuf v1.36.10
 	mvdan.cc/sh/v3 v3.12.0
@@ -72,6 +72,7 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/hashstructure/v2 v2.0.2 // indirect
