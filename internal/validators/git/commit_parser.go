@@ -7,8 +7,9 @@ import (
 
 // footerPattern matches git trailer format: "Token: value"
 // Supports "BREAKING CHANGE" (with space) per conventional commits spec.
+// Pattern ensures no trailing spaces/hyphens in token names.
 // Compiled once at package initialization for efficiency.
-var footerPattern = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9- ]*):\s*(.*)$`)
+var footerPattern = regexp.MustCompile(`^([A-Za-z0-9]+(?:[ -][A-Za-z0-9]+)*):\s*(.*)$`)
 
 // titleRegex matches conventional commit title format: type(scope)!: description
 // Capture groups: 1=type, 3=scope (optional inside group 2), 4=! (optional), 5=description
