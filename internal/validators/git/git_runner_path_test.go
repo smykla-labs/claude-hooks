@@ -70,6 +70,12 @@ var _ = Describe("CLIGitRunnerWithPath", func() {
 		err = repo.SetConfig(cfg)
 		Expect(err).NotTo(HaveOccurred())
 
+		// Set GIT_DIR and GIT_WORK_TREE explicitly to ensure complete isolation
+		// when running from a worktree. The -C flag alone is insufficient because
+		// git still discovers the parent worktree through process environment.
+		os.Setenv("GIT_DIR", filepath.Join(tempDir, ".git"))
+		os.Setenv("GIT_WORK_TREE", tempDir)
+
 		// Create runner for the temp directory
 		runner = git.NewCLIGitRunnerForPath(tempDir)
 	})
@@ -96,6 +102,11 @@ var _ = Describe("CLIGitRunnerWithPath", func() {
 			nonRepoDir, err := os.MkdirTemp("", "non-repo-*")
 			Expect(err).NotTo(HaveOccurred())
 			defer os.RemoveAll(nonRepoDir)
+
+			// Clear GIT_DIR/GIT_WORK_TREE so the non-repo check isn't affected
+			// by the isolation env vars set in BeforeEach
+			os.Unsetenv("GIT_DIR")
+			os.Unsetenv("GIT_WORK_TREE")
 
 			nonRepoRunner := git.NewCLIGitRunnerForPath(nonRepoDir)
 			Expect(nonRepoRunner.IsInRepo()).To(BeFalse())
@@ -389,6 +400,12 @@ var _ = Describe("NewGitRunnerForPath", func() {
 		// Initialize git repository
 		_, err = gogit.PlainInit(tempDir, false)
 		Expect(err).NotTo(HaveOccurred())
+
+		// Set GIT_DIR and GIT_WORK_TREE explicitly to ensure complete isolation
+		// when running from a worktree. The -C flag alone is insufficient because
+		// git still discovers the parent worktree through process environment.
+		os.Setenv("GIT_DIR", filepath.Join(tempDir, ".git"))
+		os.Setenv("GIT_WORK_TREE", tempDir)
 	})
 
 	AfterEach(func() {
@@ -450,6 +467,11 @@ var _ = Describe("NewGitRunnerForPath", func() {
 		var nonRepoDir string
 
 		BeforeEach(func() {
+			// Clear GIT_DIR/GIT_WORK_TREE so the non-repo check isn't affected
+			// by the isolation env vars set in parent BeforeEach
+			os.Unsetenv("GIT_DIR")
+			os.Unsetenv("GIT_WORK_TREE")
+
 			nonRepoDir, err = os.MkdirTemp("", "non-repo-*")
 			Expect(err).NotTo(HaveOccurred())
 
