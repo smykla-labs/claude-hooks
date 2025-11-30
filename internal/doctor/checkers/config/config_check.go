@@ -4,6 +4,7 @@ package configchecker
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/cockroachdb/errors"
 
@@ -155,6 +156,13 @@ func (c *ProjectChecker) Check(_ context.Context) doctor.CheckResult {
 				WithFixID("fix_config_permissions")
 		}
 
+		// Check if this is a rules validation error
+		if isRulesValidationError(err) {
+			return doctor.FailError("Project config", "Invalid rules configuration").
+				WithDetails(fmt.Sprintf("Error: %v", err)).
+				WithFixID("fix_invalid_rules")
+		}
+
 		return doctor.FailError("Project config", fmt.Sprintf("Failed to load: %v", err))
 	}
 
@@ -166,6 +174,40 @@ func (c *ProjectChecker) Check(_ context.Context) doctor.CheckResult {
 	}
 
 	return doctor.Pass("Project config", "Loaded and validated")
+}
+
+// isRulesValidationError checks if the error is related to rules validation.
+func isRulesValidationError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errStr := err.Error()
+
+	return errors.Is(err, internalconfig.ErrEmptyMatchConditions) ||
+		errors.Is(err, internalconfig.ErrInvalidRule) ||
+		containsRulesError(errStr)
+}
+
+// containsRulesError checks if error message contains rules-related keywords.
+func containsRulesError(errStr string) bool {
+	rulesKeywords := []string{
+		"rule has no match",
+		"invalid tool_type",
+		"invalid event_type",
+		"invalid action type",
+		"empty match section",
+	}
+
+	errLower := strings.ToLower(errStr)
+
+	for _, keyword := range rulesKeywords {
+		if strings.Contains(errLower, strings.ToLower(keyword)) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // PermissionsChecker checks if config files have secure permissions
