@@ -59,6 +59,26 @@ var (
 
 	// Branch deletion flags for git branch.
 	branchDeleteFlags = []string{"-d", "-D", "--delete"}
+
+	// Branch query/list flags for git branch (non-creation operations).
+	branchQueryFlags = []string{
+		"-a", "--all", // list all branches
+		"-r", "--remotes", // list remote branches
+		"-l", "--list", // list mode
+		"-v", "--verbose", "-vv", // verbose output
+		"--contains",         // filter branches containing commit
+		"--no-contains",      // filter branches not containing commit
+		"--merged",           // list branches merged into HEAD
+		"--no-merged",        // list branches not merged
+		"--points-at",        // filter branches pointing at commit
+		"--sort",             // sort branches
+		"--format",           // format output
+		"--show-current",     // show current branch name
+		"--column",           // column output
+		"--no-column",        // no column output
+		"-m", "-M", "--move", // rename branch (not creation)
+		"-c", "-C", "--copy", // copy branch (handled separately)
+	}
 )
 
 // getProtectedBranches returns the list of protected branches
@@ -162,9 +182,13 @@ func (v *BranchValidator) validateCheckout(gitCmd *parser.GitCommand) *validator
 }
 
 // validateBranch validates git branch commands that create new branches.
-// Skips validation for delete operations.
+// Skips validation for delete operations and query/list operations.
 func (v *BranchValidator) validateBranch(gitCmd *parser.GitCommand) *validator.Result {
 	if hasAnyFlag(gitCmd, branchDeleteFlags) {
+		return nil
+	}
+
+	if hasAnyFlag(gitCmd, branchQueryFlags) {
 		return nil
 	}
 
