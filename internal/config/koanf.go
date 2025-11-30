@@ -379,6 +379,46 @@ func (l *KoanfLoader) HasProjectConfig() bool {
 	return l.findProjectConfig() != ""
 }
 
+// FindProjectConfigPath returns the path to the project config file if one exists.
+// Returns empty string if no project config file is found.
+func (l *KoanfLoader) FindProjectConfigPath() string {
+	return l.findProjectConfig()
+}
+
+// LoadProjectConfigOnly loads only the project configuration file without merging
+// with defaults, global config, or environment variables.
+// This is useful for tools that need to edit and write back the project config
+// without contaminating it with values from other sources.
+// Returns nil if no project config file exists.
+func (l *KoanfLoader) LoadProjectConfigOnly() (*config.Config, string, error) {
+	projectPath := l.findProjectConfig()
+	if projectPath == "" {
+		return nil, "", nil
+	}
+
+	// Create a fresh koanf instance for isolated loading
+	k := koanf.New(".")
+
+	// Load only the project config file
+	if err := k.Load(file.Provider(projectPath), tomlparser.Parser()); err != nil {
+		return nil, projectPath, fmt.Errorf("failed to load project config: %w", err)
+	}
+
+	// Unmarshal into config struct
+	var cfg config.Config
+
+	tomlOpts := koanf.UnmarshalConf{
+		Tag:       "koanf",
+		FlatPaths: false,
+	}
+
+	if err := k.UnmarshalWithConf("", &cfg, tomlOpts); err != nil {
+		return nil, projectPath, fmt.Errorf("failed to unmarshal project config: %w", err)
+	}
+
+	return &cfg, projectPath, nil
+}
+
 // flagsToConfig converts CLI flags to a configuration map.
 func (*KoanfLoader) flagsToConfig(flags map[string]any) map[string]any {
 	result := make(map[string]any)

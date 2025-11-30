@@ -24,16 +24,18 @@ const (
 // RulesFixer fixes invalid rules by disabling them.
 type RulesFixer struct {
 	prompter     prompt.Prompter
-	writer       *internalconfig.Writer
 	rulesChecker *ruleschecker.RulesChecker
+	loader       *internalconfig.KoanfLoader
 }
 
 // NewRulesFixer creates a new RulesFixer.
 func NewRulesFixer(prompter prompt.Prompter) *RulesFixer {
+	loader, _ := internalconfig.NewKoanfLoader()
+
 	return &RulesFixer{
 		prompter:     prompter,
-		writer:       internalconfig.NewWriter(),
 		rulesChecker: ruleschecker.NewRulesChecker(),
+		loader:       loader,
 	}
 }
 
@@ -62,12 +64,14 @@ func (f *RulesFixer) Fix(ctx context.Context, interactive bool) error {
 		return nil
 	}
 
-	cfg, err := f.loadConfig()
+	// Load only the project config (not merged with defaults/global/env)
+	// This ensures we only write back what was in the project config
+	cfg, configPath, err := f.loadProjectConfig()
 	if err != nil {
 		return err
 	}
 
-	if cfg.Rules == nil || len(cfg.Rules.Rules) == 0 {
+	if cfg == nil || cfg.Rules == nil || len(cfg.Rules.Rules) == 0 {
 		return nil
 	}
 
@@ -87,29 +91,34 @@ func (f *RulesFixer) Fix(ctx context.Context, interactive bool) error {
 	// Disable the invalid rules
 	f.disableRules(cfg, rulesToDisable)
 
-	// Write back to project config
-	if err := f.writer.WriteProject(cfg); err != nil {
-		return fmt.Errorf("failed to write config: %w", err)
+	// Write back to the same project config file that was loaded
+	writer := internalconfig.NewWriter()
+	if err := writer.WriteFile(configPath, cfg); err != nil {
+		return fmt.Errorf("failed to write config to %s: %w", configPath, err)
 	}
 
 	return nil
 }
 
-// loadConfig loads the configuration without validation.
-// This allows fixing invalid configurations.
-func (*RulesFixer) loadConfig() (*config.Config, error) {
-	loader, err := internalconfig.NewKoanfLoader()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create config loader: %w", err)
+// loadProjectConfig loads only the project configuration file.
+// This ensures we don't contaminate the project config with defaults/global/env values.
+func (f *RulesFixer) loadProjectConfig() (*config.Config, string, error) {
+	if f.loader == nil {
+		loader, err := internalconfig.NewKoanfLoader()
+		if err != nil {
+			return nil, "", fmt.Errorf("failed to create config loader: %w", err)
+		}
+
+		f.loader = loader
 	}
 
-	// Use LoadWithoutValidation to allow loading invalid configs
-	cfg, err := loader.LoadWithoutValidation(nil)
+	// Load only the project config file (not merged with defaults/global/env)
+	cfg, path, err := f.loader.LoadProjectConfigOnly()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %w", err)
+		return nil, path, fmt.Errorf("failed to load project config: %w", err)
 	}
 
-	return cfg, nil
+	return cfg, path, nil
 }
 
 // collectFixableRules collects indices of rules that can be fixed.
