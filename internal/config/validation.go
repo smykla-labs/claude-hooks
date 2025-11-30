@@ -2,6 +2,7 @@
 package config
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/cockroachdb/errors"
@@ -487,7 +488,7 @@ func (v *Validator) validateRulesConfig(cfg *config.RulesConfig) error {
 	}
 
 	if len(validationErrors) > 0 {
-		return fmt.Errorf("rules: %w", combineErrors(validationErrors))
+		return errors.Wrap(combineErrors(validationErrors), "rules")
 	}
 
 	return nil
@@ -533,14 +534,14 @@ func (v *Validator) validateRule(rule *config.RuleConfig, ruleID string) error {
 // validateRuleMatchConditions validates that a rule has at least one match condition.
 func (*Validator) validateRuleMatchConditions(match *config.RuleMatchConfig, ruleID string) error {
 	if match == nil {
-		return fmt.Errorf("%w: %s has no match section", ErrEmptyMatchConditions, ruleID)
+		return errors.Wrapf(ErrEmptyMatchConditions, "%s has no match section", ruleID)
 	}
 
 	// Use centralized method on RuleMatchConfig
 	if !match.HasMatchConditions() {
-		return fmt.Errorf(
-			"%w: %s has empty match section (rule will never match)",
+		return errors.Wrapf(
 			ErrEmptyMatchConditions,
+			"%s has empty match section (rule will never match)",
 			ruleID,
 		)
 	}
@@ -557,9 +558,9 @@ func (*Validator) validateRuleMatchFields(match *config.RuleMatchConfig, ruleID 
 		if !stringutil.ContainsCaseInsensitive(config.ValidEventTypes, match.EventType) {
 			validationErrors = append(
 				validationErrors,
-				fmt.Errorf(
-					"%w: %s has invalid event_type %q (valid: %v)",
+				errors.Wrapf(
 					ErrInvalidRule,
+					"%s has invalid event_type %q (valid: %v)",
 					ruleID,
 					match.EventType,
 					config.ValidEventTypes,
@@ -573,9 +574,9 @@ func (*Validator) validateRuleMatchFields(match *config.RuleMatchConfig, ruleID 
 		if !stringutil.ContainsCaseInsensitive(config.ValidToolTypes, match.ToolType) {
 			validationErrors = append(
 				validationErrors,
-				fmt.Errorf(
-					"%w: %s has invalid tool_type %q (valid: %v)",
+				errors.Wrapf(
 					ErrInvalidRule,
+					"%s has invalid tool_type %q (valid: %v)",
 					ruleID,
 					match.ToolType,
 					config.ValidToolTypes,
@@ -600,9 +601,9 @@ func (*Validator) validateRuleAction(action *config.RuleActionConfig, ruleID str
 
 	// Validate action type if specified
 	if action.Type != "" && !slices.Contains(config.ValidActionTypes, action.Type) {
-		return fmt.Errorf(
-			"%w: %s has invalid action type %q (valid: %v)",
+		return errors.Wrapf(
 			ErrInvalidRule,
+			"%s has invalid action type %q (valid: %v)",
 			ruleID,
 			action.Type,
 			config.ValidActionTypes,

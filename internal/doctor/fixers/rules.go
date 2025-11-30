@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cockroachdb/errors"
+
 	internalconfig "github.com/smykla-labs/klaudiush/internal/config"
 	"github.com/smykla-labs/klaudiush/internal/doctor"
 	ruleschecker "github.com/smykla-labs/klaudiush/internal/doctor/checkers/rules"
@@ -94,7 +96,7 @@ func (f *RulesFixer) Fix(ctx context.Context, interactive bool) error {
 	// Write back to the same project config file that was loaded
 	writer := internalconfig.NewWriter()
 	if err := writer.WriteFile(configPath, cfg); err != nil {
-		return fmt.Errorf("failed to write config to %s: %w", configPath, err)
+		return errors.Wrapf(err, "failed to write config to %s", configPath)
 	}
 
 	return nil
@@ -106,7 +108,7 @@ func (f *RulesFixer) loadProjectConfig() (*config.Config, string, error) {
 	if f.loader == nil {
 		loader, err := internalconfig.NewKoanfLoader()
 		if err != nil {
-			return nil, "", fmt.Errorf("failed to create config loader: %w", err)
+			return nil, "", errors.Wrap(err, "failed to create config loader")
 		}
 
 		f.loader = loader
@@ -115,7 +117,7 @@ func (f *RulesFixer) loadProjectConfig() (*config.Config, string, error) {
 	// Load only the project config file (not merged with defaults/global/env)
 	cfg, path, err := f.loader.LoadProjectConfigOnly()
 	if err != nil {
-		return nil, path, fmt.Errorf("failed to load project config: %w", err)
+		return nil, path, errors.Wrap(err, "failed to load project config")
 	}
 
 	return cfg, path, nil

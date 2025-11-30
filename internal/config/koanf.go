@@ -401,7 +401,7 @@ func (l *KoanfLoader) LoadProjectConfigOnly() (*config.Config, string, error) {
 
 	// Load only the project config file
 	if err := k.Load(file.Provider(projectPath), tomlparser.Parser()); err != nil {
-		return nil, projectPath, fmt.Errorf("failed to load project config: %w", err)
+		return nil, projectPath, errors.Wrap(err, "failed to load project config")
 	}
 
 	// Unmarshal into config struct
@@ -413,7 +413,7 @@ func (l *KoanfLoader) LoadProjectConfigOnly() (*config.Config, string, error) {
 	}
 
 	if err := k.UnmarshalWithConf("", &cfg, tomlOpts); err != nil {
-		return nil, projectPath, fmt.Errorf("failed to unmarshal project config: %w", err)
+		return nil, projectPath, errors.Wrap(err, "failed to unmarshal project config")
 	}
 
 	return &cfg, projectPath, nil
