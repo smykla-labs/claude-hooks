@@ -366,15 +366,15 @@ var _ = Describe("hasMatchConditions", func() {
 
 var _ = Describe("containsCaseInsensitive", func() {
 	It("should find exact match", func() {
-		Expect(containsCaseInsensitive(validToolTypes, "Bash")).To(BeTrue())
+		Expect(containsCaseInsensitive(config.ValidToolTypes, "Bash")).To(BeTrue())
 	})
 
 	It("should find case-insensitive match", func() {
-		Expect(containsCaseInsensitive(validToolTypes, "bash")).To(BeTrue())
-		Expect(containsCaseInsensitive(validToolTypes, "BASH")).To(BeTrue())
+		Expect(containsCaseInsensitive(config.ValidToolTypes, "bash")).To(BeTrue())
+		Expect(containsCaseInsensitive(config.ValidToolTypes, "BASH")).To(BeTrue())
 	})
 
 	It("should return false for non-match", func() {
-		Expect(containsCaseInsensitive(validToolTypes, "NotATool")).To(BeFalse())
+		Expect(containsCaseInsensitive(config.ValidToolTypes, "NotATool")).To(BeFalse())
 	})
 })

@@ -32,15 +32,6 @@ var (
 	ErrEmptyMatchConditions = errors.New("rule has no match conditions")
 )
 
-// Valid action types for rules.
-var validActionTypes = []string{"allow", "block", "warn"}
-
-// Valid event types for rules (case-insensitive matching supported).
-var validEventTypes = []string{"PreToolUse", "PostToolUse", "Notification"}
-
-// Valid tool types for rules (case-insensitive matching supported).
-var validToolTypes = []string{"Bash", "Write", "Edit", "MultiEdit", "Grep", "Read", "Glob"}
-
 // Validator validates configuration semantics.
 type Validator struct{}
 
@@ -577,7 +568,7 @@ func (*Validator) validateRuleMatchFields(match *config.RuleMatchConfig, ruleID 
 
 	// Validate event_type if specified
 	if match.EventType != "" {
-		if !containsCaseInsensitive(validEventTypes, match.EventType) {
+		if !containsCaseInsensitive(config.ValidEventTypes, match.EventType) {
 			validationErrors = append(
 				validationErrors,
 				fmt.Errorf(
@@ -585,7 +576,7 @@ func (*Validator) validateRuleMatchFields(match *config.RuleMatchConfig, ruleID 
 					ErrInvalidRule,
 					ruleID,
 					match.EventType,
-					validEventTypes,
+					config.ValidEventTypes,
 				),
 			)
 		}
@@ -593,7 +584,7 @@ func (*Validator) validateRuleMatchFields(match *config.RuleMatchConfig, ruleID 
 
 	// Validate tool_type if specified
 	if match.ToolType != "" {
-		if !containsCaseInsensitive(validToolTypes, match.ToolType) {
+		if !containsCaseInsensitive(config.ValidToolTypes, match.ToolType) {
 			validationErrors = append(
 				validationErrors,
 				fmt.Errorf(
@@ -601,7 +592,7 @@ func (*Validator) validateRuleMatchFields(match *config.RuleMatchConfig, ruleID 
 					ErrInvalidRule,
 					ruleID,
 					match.ToolType,
-					validToolTypes,
+					config.ValidToolTypes,
 				),
 			)
 		}
@@ -622,13 +613,13 @@ func (*Validator) validateRuleAction(action *config.RuleActionConfig, ruleID str
 	}
 
 	// Validate action type if specified
-	if action.Type != "" && !slices.Contains(validActionTypes, action.Type) {
+	if action.Type != "" && !slices.Contains(config.ValidActionTypes, action.Type) {
 		return fmt.Errorf(
 			"%w: %s has invalid action type %q (valid: %v)",
 			ErrInvalidRule,
 			ruleID,
 			action.Type,
-			validActionTypes,
+			config.ValidActionTypes,
 		)
 	}
 

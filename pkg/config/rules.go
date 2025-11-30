@@ -1,6 +1,19 @@
 // Package config provides configuration schema types for klaudiush validators.
 package config
 
+// Valid values for rules configuration.
+// These are exported for use by validation and doctor packages.
+var (
+	// ValidActionTypes are the valid action types for rules.
+	ValidActionTypes = []string{"allow", "block", "warn"}
+
+	// ValidEventTypes are the valid event types for rules (case-insensitive matching supported).
+	ValidEventTypes = []string{"PreToolUse", "PostToolUse", "Notification"}
+
+	// ValidToolTypes are the valid tool types for rules (case-insensitive matching supported).
+	ValidToolTypes = []string{"Bash", "Write", "Edit", "MultiEdit", "Grep", "Read", "Glob"}
+)
+
 // RulesConfig contains the dynamic rule configuration.
 type RulesConfig struct {
 	// Enabled controls whether the rule engine is active.

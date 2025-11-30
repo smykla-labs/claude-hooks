@@ -12,13 +12,6 @@ import (
 	"github.com/smykla-labs/klaudiush/pkg/config"
 )
 
-// Valid values for rules configuration.
-var (
-	validActionTypes = []string{"allow", "block", "warn"}
-	validEventTypes  = []string{"PreToolUse", "PostToolUse", "Notification"}
-	validToolTypes   = []string{"Bash", "Write", "Edit", "MultiEdit", "Grep", "Read", "Glob"}
-)
-
 // RuleIssue represents an issue found in a rule configuration.
 type RuleIssue struct {
 	RuleIndex int
@@ -37,13 +30,19 @@ type ConfigLoader interface {
 
 // RulesChecker checks the validity of rules configuration.
 type RulesChecker struct {
-	loader ConfigLoader
-	issues []RuleIssue
+	loader    ConfigLoader
+	loaderErr error
+	issues    []RuleIssue
 }
 
 // NewRulesChecker creates a new rules checker.
 func NewRulesChecker() *RulesChecker {
-	loader, _ := internalconfig.NewKoanfLoader()
+	loader, err := internalconfig.NewKoanfLoader()
+	if err != nil {
+		return &RulesChecker{
+			loaderErr: err,
+		}
+	}
 
 	return &RulesChecker{
 		loader: loader,
@@ -75,6 +74,12 @@ func (c *RulesChecker) GetIssues() []RuleIssue {
 // Check performs the rules validation check.
 func (c *RulesChecker) Check(_ context.Context) doctor.CheckResult {
 	c.issues = nil
+
+	// Check if loader initialization failed
+	if c.loaderErr != nil {
+		return doctor.FailError("Rules validation",
+			fmt.Sprintf("config loader initialization failed: %v", c.loaderErr))
+	}
 
 	if !c.loader.HasProjectConfig() {
 		return doctor.Skip("Rules validation", "No project config found")
@@ -175,13 +180,13 @@ func (c *RulesChecker) validateRule(index int, rule *config.RuleConfig) {
 
 	// Check for invalid event_type
 	if rule.Match.EventType != "" {
-		if !containsCaseInsensitive(validEventTypes, rule.Match.EventType) {
+		if !containsCaseInsensitive(config.ValidEventTypes, rule.Match.EventType) {
 			c.issues = append(c.issues, RuleIssue{
 				RuleIndex: index,
 				RuleName:  ruleName,
 				IssueType: "invalid_event_type",
 				Message: fmt.Sprintf("invalid event_type %q (valid: %s)",
-					rule.Match.EventType, strings.Join(validEventTypes, ", ")),
+					rule.Match.EventType, strings.Join(config.ValidEventTypes, ", ")),
 				Fixable: true,
 			})
 		}
@@ -189,13 +194,13 @@ func (c *RulesChecker) validateRule(index int, rule *config.RuleConfig) {
 
 	// Check for invalid tool_type
 	if rule.Match.ToolType != "" {
-		if !containsCaseInsensitive(validToolTypes, rule.Match.ToolType) {
+		if !containsCaseInsensitive(config.ValidToolTypes, rule.Match.ToolType) {
 			c.issues = append(c.issues, RuleIssue{
 				RuleIndex: index,
 				RuleName:  ruleName,
 				IssueType: "invalid_tool_type",
 				Message: fmt.Sprintf("invalid tool_type %q (valid: %s)",
-					rule.Match.ToolType, strings.Join(validToolTypes, ", ")),
+					rule.Match.ToolType, strings.Join(config.ValidToolTypes, ", ")),
 				Fixable: true,
 			})
 		}
@@ -203,13 +208,13 @@ func (c *RulesChecker) validateRule(index int, rule *config.RuleConfig) {
 
 	// Check for invalid action type
 	if rule.Action != nil && rule.Action.Type != "" {
-		if !slices.Contains(validActionTypes, rule.Action.Type) {
+		if !slices.Contains(config.ValidActionTypes, rule.Action.Type) {
 			c.issues = append(c.issues, RuleIssue{
 				RuleIndex: index,
 				RuleName:  ruleName,
 				IssueType: "invalid_action_type",
 				Message: fmt.Sprintf("invalid action type %q (valid: %s)",
-					rule.Action.Type, strings.Join(validActionTypes, ", ")),
+					rule.Action.Type, strings.Join(config.ValidActionTypes, ", ")),
 				Fixable: true,
 			})
 		}
