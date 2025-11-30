@@ -85,6 +85,9 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code@2.0.55
+
       - name: Run Claude Code Review
         uses: anthropics/claude-code-action@a7e4c51380c42dd89b127f5e5f9be7b54020bc6b # v1.0.21
         with:
