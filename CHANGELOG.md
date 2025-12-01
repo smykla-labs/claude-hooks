@@ -5,6 +5,13 @@ All notable changes to klaudiush will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0](https://github.com/smykla-labs/klaudiush/compare/v1.7.0...v1.8.0) (2025-12-01)
+
+### Features
+
+* **validators:** add oxlint JS/TS linter ([#129](https://github.com/smykla-labs/klaudiush/issues/129)) ([cca158d](https://github.com/smykla-labs/klaudiush/commit/cca158d0646a40f4dfc585254d5f7c3a5d4edf5f))
+* **validators:** add rustfmt Rust linter ([#130](https://github.com/smykla-labs/klaudiush/issues/130)) ([408ebd5](https://github.com/smykla-labs/klaudiush/commit/408ebd5af91973567b860395d3f47e61658f48d0))
+
 ## [1.7.0](https://github.com/smykla-labs/klaudiush/compare/v1.6.0...v1.7.0) (2025-12-01)
 
 ### Features
