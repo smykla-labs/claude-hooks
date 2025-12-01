@@ -14,6 +14,9 @@ type FileConfig struct {
 
 	// Workflow validator configuration (GitHub Actions)
 	Workflow *WorkflowValidatorConfig `json:"workflow,omitempty" koanf:"workflow" toml:"workflow"`
+
+	// Gofumpt validator configuration (Go formatting)
+	Gofumpt *GofumptValidatorConfig `json:"gofumpt,omitempty" koanf:"gofumpt" toml:"gofumpt"`
 }
 
 // MarkdownValidatorConfig configures the Markdown file validator.
@@ -176,4 +179,31 @@ type WorkflowValidatorConfig struct {
 	// ActionlintPath is the path to the actionlint binary.
 	// Default: "" (use PATH)
 	ActionlintPath string `json:"actionlint_path,omitempty" koanf:"actionlint_path" toml:"actionlint_path"`
+}
+
+// GofumptValidatorConfig configures the Go code formatter validator.
+type GofumptValidatorConfig struct {
+	ValidatorConfig
+
+	// Timeout is the maximum time allowed for gofumpt operations.
+	// Default: "10s"
+	Timeout Duration `json:"timeout,omitempty" koanf:"timeout" toml:"timeout"`
+
+	// ExtraRules enables gofumpt's -extra flag for stricter formatting rules.
+	// Default: false
+	ExtraRules *bool `json:"extra_rules,omitempty" koanf:"extra_rules" toml:"extra_rules"`
+
+	// Lang specifies the Go language version (e.g., "go1.21").
+	// If not specified, auto-detected from go.mod if available.
+	// Default: "" (auto-detect)
+	Lang string `json:"lang,omitempty" koanf:"lang" toml:"lang"`
+
+	// ModPath specifies the module path for gofumpt.
+	// If not specified, auto-detected from go.mod if available.
+	// Default: "" (auto-detect)
+	ModPath string `json:"modpath,omitempty" koanf:"modpath" toml:"modpath"`
+
+	// GofumptPath is the path to the gofumpt binary.
+	// Default: "" (use PATH)
+	GofumptPath string `json:"gofumpt_path,omitempty" koanf:"gofumpt_path" toml:"gofumpt_path"`
 }
