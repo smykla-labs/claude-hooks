@@ -113,7 +113,7 @@ type javascriptContent struct {
 
 // getContent extracts JavaScript/TypeScript script content from context
 //
-//nolint:dupl // Similar pattern to PythonValidator.getContent, acceptable duplication
+//nolint:dupl // Similar pattern to ShellScriptValidator.getContent, acceptable duplication
 func (v *JavaScriptValidator) getContent(
 	ctx *hook.Context,
 	filePath string,
