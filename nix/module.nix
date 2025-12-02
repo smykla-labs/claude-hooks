@@ -29,7 +29,7 @@ in
       default = true;
       description = ''
         Whether to create dynamic directories that persist across rebuilds.
-        These include logs, backup, cache, and plugins directories.
+        These include logs, backup, and cache directories.
       '';
     };
 
@@ -55,7 +55,6 @@ in
         run mkdir -p "${klaudiushDir}/logs"
         run mkdir -p "${klaudiushDir}/backup"
         run mkdir -p "${klaudiushDir}/cache"
-        run mkdir -p "${klaudiushDir}/plugins"
       ''}
 
       ${lib.optionalString (cfg.extraDynamicDirs != [ ]) ''
