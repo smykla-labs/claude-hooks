@@ -5,6 +5,13 @@ All notable changes to klaudiush will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1](https://github.com/smykla-labs/klaudiush/compare/v1.8.0...v1.8.1) (2025-12-02)
+
+### Bug Fixes
+
+* **ci:** pin ruff version to 0.14.7 ([#131](https://github.com/smykla-labs/klaudiush/issues/131)) ([b9dad54](https://github.com/smykla-labs/klaudiush/commit/b9dad5498f00359054c24acfebe0bea49ca7080d)), closes [#21](https://github.com/smykla-labs/klaudiush/issues/21)
+* **ci:** pin ruff with SHA256 hashes ([#132](https://github.com/smykla-labs/klaudiush/issues/132)) ([ae14064](https://github.com/smykla-labs/klaudiush/commit/ae14064b7328ea593c77a1559050d8b0ef541e17)), closes [#21](https://github.com/smykla-labs/klaudiush/issues/21)
+
 ## [1.8.0](https://github.com/smykla-labs/klaudiush/compare/v1.7.0...v1.8.0) (2025-12-01)
 
 ### Features
