@@ -1,6 +1,19 @@
 // Package config provides configuration schema types for klaudiush validators.
 package config
 
+import "time"
+
+const (
+	// DefaultMaxBackups is the default maximum number of backups to keep.
+	DefaultMaxBackups = 10
+
+	// DefaultMaxSize is the default maximum total size of backups (50MB).
+	DefaultMaxSize = 52428800
+
+	// DefaultMaxAgeHours is the default maximum age in hours (30 days = 720h).
+	DefaultMaxAgeHours = "720h"
+)
+
 // BackupConfig contains configuration for the backup system.
 type BackupConfig struct {
 	// Enabled controls whether the backup system is active.
@@ -76,4 +89,34 @@ func (b *BackupConfig) GetDelta() *DeltaConfig {
 	}
 
 	return b.Delta
+}
+
+// GetMaxBackups returns the maximum number of backups, using default if not set.
+func (b *BackupConfig) GetMaxBackups() int {
+	if b == nil || b.MaxBackups == nil {
+		return DefaultMaxBackups
+	}
+
+	return *b.MaxBackups
+}
+
+// GetMaxAge returns the maximum age duration, using default if not set.
+func (b *BackupConfig) GetMaxAge() Duration {
+	if b == nil || b.MaxAge.ToDuration() == 0 {
+		// Parse default duration
+		defaultDur, _ := time.ParseDuration(DefaultMaxAgeHours)
+
+		return Duration(defaultDur)
+	}
+
+	return b.MaxAge
+}
+
+// GetMaxSize returns the maximum size in bytes, using default if not set.
+func (b *BackupConfig) GetMaxSize() int64 {
+	if b == nil || b.MaxSize == nil {
+		return DefaultMaxSize
+	}
+
+	return *b.MaxSize
 }
