@@ -74,6 +74,8 @@ jobs:
         env:
           NEW_HASH: ${{ steps.calc-hash.outputs.new_hash }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           # Extract short hash (first 12 chars after sha256-)
           SHORT_HASH=$(echo "$NEW_HASH" | sed 's/sha256-//' | cut -c1-12)
@@ -86,11 +88,11 @@ jobs:
           CONTENT=$(base64 -w 0 nix/package.nix)
 
           # Update file via GitHub API (creates verified commit)
-          gh api repos/${{ github.repository }}/contents/nix/package.nix \
+          gh api "repos/${GITHUB_REPOSITORY}/contents/nix/package.nix" \
             --method PUT \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             -f message="$COMMIT_MSG" \
             -f content="$CONTENT" \
             -f sha="$FILE_SHA" \
-            -f branch=${{ github.head_ref }}
+            -f branch="$HEAD_REF"
