@@ -26,6 +26,9 @@ type JSONInput struct {
 	ToolInput        json.RawMessage `json:"tool_input,omitempty"`
 	Command          string          `json:"command,omitempty"`
 	NotificationType string          `json:"notification_type,omitempty"`
+	SessionID        string          `json:"session_id,omitempty"`
+	ToolUseID        string          `json:"tool_use_id,omitempty"`
+	TranscriptPath   string          `json:"transcript_path,omitempty"`
 }
 
 // JSONParser parses JSON input from stdin or environment variable.
@@ -97,6 +100,9 @@ func (p *JSONParser) Parse(eventType hook.EventType) (*hook.Context, error) {
 		ToolInput:        toolInput,
 		NotificationType: input.NotificationType,
 		RawJSON:          string(jsonBytes),
+		SessionID:        input.SessionID,
+		ToolUseID:        input.ToolUseID,
+		TranscriptPath:   input.TranscriptPath,
 	}
 
 	return ctx, nil
