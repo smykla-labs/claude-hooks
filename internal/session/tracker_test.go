@@ -594,6 +594,11 @@ var _ = Describe("Tracker", func() {
 	})
 
 	Describe("IsEnabled", func() {
+		It("returns false with nil tracker", func() {
+			var nilTracker *session.Tracker
+			Expect(nilTracker.IsEnabled()).To(BeFalse())
+		})
+
 		It("returns false with nil config", func() {
 			tracker = session.NewTracker(nil)
 			Expect(tracker.IsEnabled()).To(BeFalse())
