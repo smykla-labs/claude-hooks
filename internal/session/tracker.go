@@ -226,8 +226,12 @@ func (t *Tracker) GetInfo(sessionID string) *SessionInfo {
 		return nil
 	}
 
-	// Return a copy
+	// Return a deep copy
 	infoCopy := *info
+	if info.PoisonedAt != nil {
+		poisonedAtCopy := *info.PoisonedAt
+		infoCopy.PoisonedAt = &poisonedAtCopy
+	}
 
 	return &infoCopy
 }
@@ -243,6 +247,11 @@ func (t *Tracker) GetState() SessionState {
 
 	for k, v := range t.state.Sessions {
 		infoCopy := *v
+		if v.PoisonedAt != nil {
+			poisonedAtCopy := *v.PoisonedAt
+			infoCopy.PoisonedAt = &poisonedAtCopy
+		}
+
 		state.Sessions[k] = &infoCopy
 	}
 

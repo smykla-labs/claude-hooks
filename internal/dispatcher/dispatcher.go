@@ -188,7 +188,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, hookCtx *hook.Context) []*Val
 
 			d.sessionTracker.Poison(hookCtx.SessionID, code, message)
 		} else {
-			// Record command only when validation succeeds (no blocking errors)
+			// Record command when validation passes or only has warnings (no blocking errors)
 			d.sessionTracker.RecordCommand(hookCtx.SessionID)
 		}
 	}
