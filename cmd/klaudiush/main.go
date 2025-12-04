@@ -13,6 +13,7 @@ import (
 	"github.com/smykla-labs/klaudiush/internal/backup"
 	internalconfig "github.com/smykla-labs/klaudiush/internal/config"
 	"github.com/smykla-labs/klaudiush/internal/config/factory"
+	"github.com/smykla-labs/klaudiush/internal/crashdump"
 	"github.com/smykla-labs/klaudiush/internal/dispatcher"
 	"github.com/smykla-labs/klaudiush/internal/parser"
 	"github.com/smykla-labs/klaudiush/internal/session"
@@ -28,6 +29,9 @@ const (
 	// ExitCodeBlock indicates the operation should be blocked.
 	ExitCodeBlock = 2
 
+	// ExitCodeCrash indicates an unexpected panic/crash occurred.
+	ExitCodeCrash = 3
+
 	// MigrationMarkerFile is used to track if first-run migration has completed.
 	MigrationMarkerFile = ".migration_v1"
 )
@@ -39,13 +43,36 @@ var (
 	configPath   string
 	globalConfig string
 	disableList  []string
+
+	// crashContext stores the current hook context for crash recovery.
+	// Set during validation dispatch and accessed by panic handler.
+	crashContext *hook.Context
+
+	// crashConfig stores the current configuration for crash recovery.
+	// Set during validation dispatch and accessed by panic handler.
+	crashConfig *config.Config
 )
 
 func main() {
+	os.Exit(mainWithExitCode())
+}
+
+func mainWithExitCode() (exitCode int) {
+	defer func() {
+		if r := recover(); r != nil {
+			handlePanic(r)
+
+			exitCode = ExitCodeCrash
+		}
+	}()
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+
+		return 1
 	}
+
+	return ExitCodeAllow
 }
 
 var rootCmd = &cobra.Command{
@@ -147,6 +174,10 @@ func run(_ *cobra.Command, _ []string) error {
 		"command", ctx.GetCommand(),
 		"file", filepath.Base(ctx.GetFilePath()),
 	)
+
+	// Store context and config for crash recovery
+	crashContext = ctx
+	crashConfig = cfg
 
 	// Build validator registry from configuration
 	registryBuilder := factory.NewRegistryBuilder(log)
@@ -376,4 +407,47 @@ func backupConfigIfExists(
 	)
 
 	return nil
+}
+
+// handlePanic handles a recovered panic value by creating a crash dump.
+func handlePanic(recovered any) {
+	// Get crash dump configuration
+	var dumpDir string
+
+	if crashConfig != nil && crashConfig.CrashDump != nil {
+		if !crashConfig.CrashDump.IsEnabled() {
+			// Crash dumps disabled, just print error
+			fmt.Fprintf(os.Stderr, "panic: %v\n", recovered)
+
+			return
+		}
+
+		dumpDir = crashConfig.CrashDump.GetDumpDir()
+	} else {
+		dumpDir = config.DefaultCrashDumpDir
+	}
+
+	// Create crash dump
+	collector := crashdump.NewCollector(version)
+	info := collector.Collect(recovered, crashContext, crashConfig)
+
+	writer, err := crashdump.NewFilesystemWriter(dumpDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "panic: %v\n", recovered)
+		fmt.Fprintf(os.Stderr, "failed to create crash dump writer: %v\n", err)
+
+		return
+	}
+
+	path, err := writer.Write(info)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "panic: %v\n", recovered)
+		fmt.Fprintf(os.Stderr, "failed to write crash dump: %v\n", err)
+
+		return
+	}
+
+	// Output crash information to stderr
+	fmt.Fprintf(os.Stderr, "panic: %v\n", recovered)
+	fmt.Fprintf(os.Stderr, "crash dump saved to: %s\n", path)
 }
