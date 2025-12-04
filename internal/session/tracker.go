@@ -358,8 +358,12 @@ func (t *Tracker) isExpiredLocked(info *SessionInfo) bool {
 
 // IsEnabled returns true if session tracking is enabled.
 func (t *Tracker) IsEnabled() bool {
+	if t == nil {
+		return false
+	}
+
 	if t.config == nil {
-		return true // Enabled by default
+		return false // Disabled by default
 	}
 
 	return t.config.IsEnabled()

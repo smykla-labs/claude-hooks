@@ -1,0 +1,5 @@
+[session]
+enabled = false
+
+[validators.file.markdown]
+enabled = false

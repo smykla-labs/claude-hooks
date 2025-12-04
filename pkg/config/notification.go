@@ -9,7 +9,7 @@ type NotificationConfig struct {
 
 // BellValidatorConfig configures the notification bell validator.
 type BellValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// CustomCommand is an optional command to run instead of sending a bell character.
 	// When set, this command will be executed for notification events instead of

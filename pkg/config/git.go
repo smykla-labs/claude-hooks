@@ -30,7 +30,7 @@ type GitConfig struct {
 
 // CommitValidatorConfig configures the git commit validator.
 type CommitValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// RequiredFlags are the flags that must be present in commit commands.
 	// Default: ["-s", "-S"]
@@ -107,7 +107,7 @@ type CommitMessageConfig struct {
 
 // PushValidatorConfig configures the git push validator.
 type PushValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// BlockedRemotes is a list of remote names that are not allowed for push operations.
 	// When Claude Code tries to push to a blocked remote, the operation will be rejected
@@ -129,7 +129,7 @@ type PushValidatorConfig struct {
 
 // AddValidatorConfig configures the git add validator.
 type AddValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// BlockedPatterns is a list of file path patterns that should not be added to git.
 	// Patterns use filepath.Match syntax (e.g., "tmp/*", "*.secret").
@@ -139,7 +139,7 @@ type AddValidatorConfig struct {
 
 // PRValidatorConfig configures the GitHub PR (gh pr create) validator.
 type PRValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// TitleMaxLength is the maximum allowed length for PR titles.
 	// Default: 50
@@ -184,7 +184,7 @@ type PRValidatorConfig struct {
 
 // MergeValidatorConfig configures the gh pr merge validator.
 type MergeValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// Message contains merge message validation settings.
 	// Validates PR title + body format before merge.
@@ -260,7 +260,7 @@ type MergeMessageConfig struct {
 
 // BranchValidatorConfig configures the git branch name validator.
 type BranchValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// ProtectedBranches is a list of branch names that skip validation.
 	// Default: ["main", "master"]
@@ -281,7 +281,7 @@ type BranchValidatorConfig struct {
 
 // NoVerifyValidatorConfig configures the git commit --no-verify validator.
 type NoVerifyValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// No additional configuration beyond base ValidatorConfig
 	// This validator blocks --no-verify flag on git commit commands
@@ -289,7 +289,7 @@ type NoVerifyValidatorConfig struct {
 
 // FetchValidatorConfig configures the git fetch validator.
 type FetchValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// No additional configuration beyond base ValidatorConfig
 	// This validator checks that the remote exists before fetch

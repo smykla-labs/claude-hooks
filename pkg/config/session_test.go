@@ -11,9 +11,9 @@ import (
 
 var _ = Describe("SessionConfig", func() {
 	Describe("IsEnabled", func() {
-		It("returns true by default", func() {
+		It("returns false by default", func() {
 			cfg := &config.SessionConfig{}
-			Expect(cfg.IsEnabled()).To(BeTrue())
+			Expect(cfg.IsEnabled()).To(BeFalse())
 		})
 
 		It("returns true when explicitly enabled", func() {
@@ -28,9 +28,9 @@ var _ = Describe("SessionConfig", func() {
 			Expect(cfg.IsEnabled()).To(BeFalse())
 		})
 
-		It("returns true for nil config", func() {
+		It("returns false for nil config", func() {
 			var cfg *config.SessionConfig
-			Expect(cfg.IsEnabled()).To(BeTrue())
+			Expect(cfg.IsEnabled()).To(BeFalse())
 		})
 	})
 

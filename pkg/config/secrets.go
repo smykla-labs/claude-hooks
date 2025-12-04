@@ -8,7 +8,7 @@ type SecretsConfig struct {
 
 // SecretsValidatorConfig configures the secrets detection validator.
 type SecretsValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// UseGitleaks enables gitleaks integration if available.
 	// When enabled and gitleaks is installed, it runs as a second-tier check
