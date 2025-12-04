@@ -60,10 +60,11 @@ func shortName(name string) string {
 
 // Dispatcher orchestrates validation of hook contexts.
 type Dispatcher struct {
-	registry         *validator.Registry
-	logger           logger.Logger
-	executor         Executor
-	exceptionChecker ExceptionChecker
+	registry            *validator.Registry
+	logger              logger.Logger
+	executor            Executor
+	exceptionChecker    ExceptionChecker
+	pipelineBlockMarker PipelineBlockMarker
 }
 
 // NewDispatcher creates a new Dispatcher with sequential execution.
@@ -100,6 +101,15 @@ func WithExceptionChecker(checker ExceptionChecker) DispatcherOption {
 	}
 }
 
+// WithPipelineBlockMarker sets the pipeline block marker for the dispatcher.
+func WithPipelineBlockMarker(marker PipelineBlockMarker) DispatcherOption {
+	return func(d *Dispatcher) {
+		if marker != nil {
+			d.pipelineBlockMarker = marker
+		}
+	}
+}
+
 // NewDispatcherWithOptions creates a new Dispatcher with options.
 func NewDispatcherWithOptions(
 	registry *validator.Registry,
@@ -128,6 +138,25 @@ func (d *Dispatcher) Dispatch(ctx context.Context, hookCtx *hook.Context) []*Val
 		"tool", hookCtx.ToolName,
 	)
 
+	// Check for active pipeline block marker
+	if d.pipelineBlockMarker != nil && d.pipelineBlockMarker.IsEnabled() {
+		if marker, valid := d.pipelineBlockMarker.CheckBlockMarker(); valid {
+			d.logger.Info("pipeline block marker active, failing immediately")
+
+			// Return a blocking error for the pipeline block
+			return []*ValidationError{
+				{
+					Validator:   "pipeline-block",
+					Message:     "Command blocked due to previous validation failure in pipeline",
+					ShouldBlock: true,
+					Details: map[string]string{
+						"original_error": fmt.Sprintf("%v", marker),
+					},
+				},
+			}
+		}
+	}
+
 	// Run validators on the main context
 	validationErrors := d.runValidators(ctx, hookCtx)
 
@@ -135,6 +164,30 @@ func (d *Dispatcher) Dispatch(ctx context.Context, hookCtx *hook.Context) []*Val
 	if hookCtx.EventType == hook.EventTypePreToolUse && hookCtx.ToolName == hook.ToolTypeBash {
 		syntheticErrors := d.validateBashFileWrites(ctx, hookCtx)
 		validationErrors = append(validationErrors, syntheticErrors...)
+	}
+
+	// Set pipeline block marker if we have blocking errors
+	if d.pipelineBlockMarker != nil && d.pipelineBlockMarker.IsEnabled() && ShouldBlock(validationErrors) {
+		// Find the first blocking error to use for the marker
+		for _, verr := range validationErrors {
+			if verr.ShouldBlock {
+				errorCode := string(verr.Reference)
+				if errorCode == "" {
+					errorCode = "UNKNOWN"
+				}
+
+				if err := d.pipelineBlockMarker.SetBlockMarker(errorCode, verr.Validator, verr.Message); err != nil {
+					d.logger.Error("failed to set pipeline block marker", "error", err)
+				} else {
+					d.logger.Info("pipeline block marker set",
+						"error_code", errorCode,
+						"validator", verr.Validator,
+					)
+				}
+
+				break
+			}
+		}
 	}
 
 	return validationErrors

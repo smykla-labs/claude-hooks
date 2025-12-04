@@ -69,6 +69,9 @@ type GlobalConfig struct {
 	// MaxGitWorkers is the maximum number of concurrent git operations.
 	// Default: 1 (serialized to avoid index lock contention)
 	MaxGitWorkers *int `json:"max_git_workers,omitempty" koanf:"max_git_workers" toml:"max_git_workers"`
+
+	// PipelineBlock contains pipeline block marker configuration.
+	PipelineBlock *PipelineBlockConfig `json:"pipeline_block,omitempty" koanf:"pipeline_block" toml:"pipeline_block"`
 }
 
 // IsParallelExecutionEnabled returns whether parallel execution is enabled.
@@ -78,6 +81,19 @@ func (g *GlobalConfig) IsParallelExecutionEnabled() bool {
 	}
 
 	return *g.ParallelExecution
+}
+
+// GetPipelineBlock returns the pipeline block config, creating it if it doesn't exist.
+func (g *GlobalConfig) GetPipelineBlock() *PipelineBlockConfig {
+	if g == nil {
+		return &PipelineBlockConfig{}
+	}
+
+	if g.PipelineBlock == nil {
+		g.PipelineBlock = &PipelineBlockConfig{}
+	}
+
+	return g.PipelineBlock
 }
 
 // GetValidators returns the validators config, creating it if it doesn't exist.

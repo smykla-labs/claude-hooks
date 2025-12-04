@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/spf13/cobra"
@@ -15,9 +16,10 @@ import (
 	"github.com/smykla-labs/klaudiush/internal/config/factory"
 	"github.com/smykla-labs/klaudiush/internal/dispatcher"
 	"github.com/smykla-labs/klaudiush/internal/parser"
-	"github.com/smykla-labs/klaudiush/pkg/config"
+	pkgconfig "github.com/smykla-labs/klaudiush/pkg/config"
 	"github.com/smykla-labs/klaudiush/pkg/hook"
 	"github.com/smykla-labs/klaudiush/pkg/logger"
+	"github.com/smykla-labs/klaudiush/pkg/pipelineblock"
 )
 
 const (
@@ -151,8 +153,36 @@ func run(_ *cobra.Command, _ []string) error {
 	registryBuilder := factory.NewRegistryBuilder(log)
 	registry := registryBuilder.Build(cfg)
 
-	// Create dispatcher
-	disp := dispatcher.NewDispatcher(registry, log)
+	// Create pipeline block manager
+	var pipelineBlockMgr dispatcher.PipelineBlockMarker
+	pbCfg := cfg.GetGlobal().GetPipelineBlock()
+	if pbCfg.IsEnabled() {
+		ttl := time.Duration(pbCfg.GetTTLSeconds()) * time.Second
+		markerPath := pbCfg.GetMarkerFile()
+		if !filepath.IsAbs(markerPath) {
+			// Make relative to working directory
+			markerPath = filepath.Join(".", markerPath)
+		}
+
+		pipelineBlockMgr = pipelineblock.NewManager(markerPath, ttl, true)
+		log.Debug("pipeline block enabled",
+			"ttl_seconds", pbCfg.GetTTLSeconds(),
+			"marker_file", markerPath,
+		)
+	}
+
+	// Create dispatcher with options
+	var disp *dispatcher.Dispatcher
+	if pipelineBlockMgr != nil {
+		disp = dispatcher.NewDispatcherWithOptions(
+			registry,
+			log,
+			dispatcher.NewSequentialExecutor(log),
+			dispatcher.WithPipelineBlockMarker(pipelineBlockMgr),
+		)
+	} else {
+		disp = dispatcher.NewDispatcher(registry, log)
+	}
 
 	// Dispatch validation
 	errs := disp.Dispatch(context.Background(), ctx)
