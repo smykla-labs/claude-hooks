@@ -23,6 +23,9 @@ type Config struct {
 
 	// Session contains configuration for session tracking.
 	Session *SessionConfig `json:"session,omitempty" koanf:"session" toml:"session"`
+
+	// CrashDump contains configuration for the crash dump system.
+	CrashDump *CrashDumpConfig `json:"crash_dump,omitempty" koanf:"crash_dump" toml:"crash_dump"`
 }
 
 // ValidatorsConfig groups all validator configurations by category.
@@ -189,4 +192,13 @@ func (c *Config) GetSession() *SessionConfig {
 	}
 
 	return c.Session
+}
+
+// GetCrashDump returns the crash dump config, creating it if it doesn't exist.
+func (c *Config) GetCrashDump() *CrashDumpConfig {
+	if c.CrashDump == nil {
+		c.CrashDump = &CrashDumpConfig{}
+	}
+
+	return c.CrashDump
 }
