@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/spf13/cobra"
@@ -31,6 +32,9 @@ const (
 	filterFile         = "file"
 	filterNotification = "notification"
 )
+
+// Default values for global settings display.
+const defaultGlobalTimeout = 10 * time.Second
 
 var validatorFilter string
 
@@ -617,19 +621,25 @@ func displayFullConfig(cfg *config.Config, filter string) {
 	// Config sources
 	displayConfigSources()
 
-	// Global settings
+	// Global settings - always display with defaults
 	fmt.Println("Global Settings")
 	fmt.Println("---------------")
 
+	useSDK := true
+	defaultTimeout := defaultGlobalTimeout
+
 	if cfg.Global != nil {
-		useSDK := true
 		if cfg.Global.UseSDKGit != nil {
 			useSDK = *cfg.Global.UseSDKGit
 		}
 
-		fmt.Printf("  Use SDK Git: %v\n", useSDK)
-		fmt.Printf("  Default Timeout: %s\n", cfg.Global.DefaultTimeout)
+		if cfg.Global.DefaultTimeout != 0 {
+			defaultTimeout = time.Duration(cfg.Global.DefaultTimeout)
+		}
 	}
+
+	fmt.Printf("  Use SDK Git: %v\n", useSDK)
+	fmt.Printf("  Default Timeout: %s\n", defaultTimeout)
 
 	fmt.Println("")
 
@@ -709,6 +719,15 @@ func displayValidatorsConfig(cfg *config.Config, filter string) {
 
 func displayGitValidators(git *config.GitConfig, filter string) {
 	if git == nil {
+		return
+	}
+
+	// Check if any validators will be displayed
+	showPush := (filter == "" || filter == filterGit || filter == "git.push") && git.Push != nil
+	showCommit := (filter == "" || filter == filterGit || filter == "git.commit") &&
+		git.Commit != nil
+
+	if !showPush && !showCommit {
 		return
 	}
 
@@ -813,14 +832,16 @@ func displayNotificationValidators(notif *config.NotificationConfig, filter stri
 		return
 	}
 
+	if notif.Bell == nil {
+		return
+	}
+
 	fmt.Println("Notification Validators")
 	fmt.Println("-----------------------")
 
-	if notif.Bell != nil {
-		fmt.Println("  notification.bell:")
-		fmt.Printf("    Enabled: %v\n", notif.Bell.IsEnabled())
-		fmt.Printf("    Severity: %s\n", notif.Bell.GetSeverity())
-	}
+	fmt.Println("  notification.bell:")
+	fmt.Printf("    Enabled: %v\n", notif.Bell.IsEnabled())
+	fmt.Printf("    Severity: %s\n", notif.Bell.GetSeverity())
 
 	fmt.Println("")
 }
