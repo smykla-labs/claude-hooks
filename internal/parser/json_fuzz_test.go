@@ -43,6 +43,10 @@ func FuzzJSONParse(f *testing.F) {
 				_ = ctx.ToolInput.Content
 				_ = ctx.NotificationType
 				_ = ctx.RawJSON
+				_ = ctx.SessionID
+				_ = ctx.ToolUseID
+				_ = ctx.TranscriptPath
+				_ = ctx.HasSessionID()
 			}
 
 			// Reset reader for next iteration

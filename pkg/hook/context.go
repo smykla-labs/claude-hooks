@@ -97,6 +97,15 @@ type Context struct {
 
 	// RawJSON contains the original JSON input for advanced parsing.
 	RawJSON string
+
+	// SessionID is the unique identifier for the Claude Code session.
+	SessionID string
+
+	// ToolUseID is the unique identifier for this tool invocation.
+	ToolUseID string
+
+	// TranscriptPath is the path to the session transcript file.
+	TranscriptPath string
 }
 
 // GetCommand returns the command from ToolInput.
@@ -128,4 +137,9 @@ func (c *Context) IsFileTool() bool {
 	return c.ToolName == ToolTypeWrite ||
 		c.ToolName == ToolTypeEdit ||
 		c.ToolName == ToolTypeMultiEdit
+}
+
+// HasSessionID returns true if a session ID is present.
+func (c *Context) HasSessionID() bool {
+	return c.SessionID != ""
 }

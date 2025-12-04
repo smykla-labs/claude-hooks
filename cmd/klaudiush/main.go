@@ -15,6 +15,7 @@ import (
 	"github.com/smykla-labs/klaudiush/internal/config/factory"
 	"github.com/smykla-labs/klaudiush/internal/dispatcher"
 	"github.com/smykla-labs/klaudiush/internal/parser"
+	"github.com/smykla-labs/klaudiush/internal/session"
 	"github.com/smykla-labs/klaudiush/pkg/config"
 	"github.com/smykla-labs/klaudiush/pkg/hook"
 	"github.com/smykla-labs/klaudiush/pkg/logger"
@@ -151,11 +152,26 @@ func run(_ *cobra.Command, _ []string) error {
 	registryBuilder := factory.NewRegistryBuilder(log)
 	registry := registryBuilder.Build(cfg)
 
-	// Create dispatcher
-	disp := dispatcher.NewDispatcher(registry, log)
+	// Create and initialize session tracker if enabled
+	sessionTracker := initSessionTracker(cfg, log)
+
+	// Create dispatcher with session tracker
+	disp := dispatcher.NewDispatcherWithOptions(
+		registry,
+		log,
+		dispatcher.NewSequentialExecutor(log),
+		dispatcher.WithSessionTracker(sessionTracker),
+	)
 
 	// Dispatch validation
 	errs := disp.Dispatch(context.Background(), ctx)
+
+	// Save session state after dispatch
+	if sessionTracker != nil {
+		if err := sessionTracker.Save(); err != nil {
+			log.Info("failed to save session state", "error", err)
+		}
+	}
 
 	// Check if we should block
 	if dispatcher.ShouldBlock(errs) {
@@ -204,6 +220,31 @@ func loadConfig(log logger.Logger) (*config.Config, error) {
 	log.Debug("configuration loaded")
 
 	return cfg, nil
+}
+
+// initSessionTracker creates and initializes a session tracker if enabled in the config.
+func initSessionTracker(cfg *config.Config, log logger.Logger) *session.Tracker {
+	sessionCfg := cfg.GetSession()
+	if !sessionCfg.IsEnabled() {
+		return nil
+	}
+
+	tracker := session.NewTracker(
+		sessionCfg,
+		session.WithLogger(log),
+	)
+
+	// Load existing session state
+	if err := tracker.Load(); err != nil {
+		log.Info("failed to load session state, starting fresh", "error", err)
+	}
+
+	log.Debug("session tracker initialized",
+		"state_file", sessionCfg.GetStateFile(),
+		"max_session_age", sessionCfg.GetMaxSessionAge(),
+	)
+
+	return tracker
 }
 
 // buildFlagsMap converts CLI flags to a map for the config provider.
