@@ -1,0 +1,21 @@
+# Test: Debug crash command help output
+# This tests that crash commands have proper help text
+
+exec klaudiush debug crash --help
+stdout 'Manage crash dumps'
+stdout 'list.*List crash dumps'
+stdout 'view.*View crash dump details'
+stdout 'clean.*Remove old crash dumps'
+
+exec klaudiush debug crash list --help
+stdout 'List all crash dumps'
+stdout 'Displays crash dumps sorted by timestamp'
+
+exec klaudiush debug crash view --help
+stdout 'View detailed information about a specific crash dump'
+stdout 'klaudiush debug crash view crash-'
+
+exec klaudiush debug crash clean --help
+stdout 'Remove old crash dumps based on retention policy'
+stdout '--dry-run'
+stdout 'Show what would be removed'

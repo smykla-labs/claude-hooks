@@ -1,0 +1,7 @@
+# Test: Debug crash list with no crash dumps
+# This tests the output when no crash dumps exist
+
+exec klaudiush debug crash list
+stdout 'No crash dumps found.'
+stdout 'Crash dumps will be stored in:'
+stdout 'Crash dumps are created automatically when klaudiush panics.'

@@ -1,0 +1,8 @@
+# Test: Debug crash view with nonexistent ID
+# This tests the error message when crash dump is not found
+
+mkdir -p .klaudiush/crash_dumps
+
+exec klaudiush debug crash view nonexistent-id
+stdout 'Crash dump not found: nonexistent-id'
+stdout 'Use .klaudiush debug crash list. to see available dumps'

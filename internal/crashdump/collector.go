@@ -17,13 +17,16 @@ import (
 const (
 	// shortIDLength is the length of the short ID suffix.
 	shortIDLength = 8
+
+	// panicNilStr is the string representation of panic(nil).
+	panicNilStr = "panic(nil)"
 )
 
 // formatPanicValue converts a recovered panic value to a string representation.
 // Handles Go 1.21+ PanicNilError, error interface, and default cases.
 func formatPanicValue(v any) string {
 	if v == nil {
-		return "panic(nil)"
+		return panicNilStr
 	}
 
 	// Go 1.21+ converts panic(nil) to *runtime.PanicNilError
@@ -34,7 +37,7 @@ func formatPanicValue(v any) string {
 	}
 
 	if _, ok := v.(panicNilError); ok {
-		return "panic(nil)"
+		return panicNilStr
 	}
 
 	// Handle error interface

@@ -1,0 +1,52 @@
+# Test: Debug crash view displays crash details
+# This tests viewing a specific crash dump
+
+mkdir -p .klaudiush/crash_dumps
+
+cp crash.json .klaudiush/crash_dumps/crash-20250101T120000-test.json
+
+exec klaudiush debug crash view crash-20250101T120000-test
+stdout 'Crash Dump Details'
+stdout '=================='
+stdout 'ID: crash-20250101T120000-test'
+stdout 'Timestamp: 2025-01-01'
+stdout 'Panic Value: test panic with context'
+stdout 'Runtime'
+stdout 'Go Version: go1.23.0'
+stdout 'OS/Arch: darwin/arm64'
+stdout 'NumCPU: 8'
+stdout 'NumGoroutine: 5'
+stdout 'Metadata'
+stdout 'Version: v1.0.0'
+stdout 'Hook Context'
+stdout 'Event Type: PreToolUse'
+stdout 'Tool Name: Bash'
+stdout 'Command: git commit'
+stdout 'Stack Trace'
+stdout 'goroutine 1'
+
+-- crash.json --
+{
+  "id": "crash-20250101T120000-test",
+  "timestamp": "2025-01-01T12:00:00Z",
+  "panic_value": "test panic with context",
+  "stack_trace": "goroutine 1 [running]:\nmain.main()\n\t/test/main.go:10 +0x20",
+  "runtime": {
+    "goos": "darwin",
+    "goarch": "arm64",
+    "go_version": "go1.23.0",
+    "num_goroutine": 5,
+    "num_cpu": 8
+  },
+  "context": {
+    "event_type": "PreToolUse",
+    "tool_name": "Bash",
+    "command": "git commit -sS -m 'test'"
+  },
+  "metadata": {
+    "version": "v1.0.0",
+    "user": "testuser",
+    "hostname": "testhost",
+    "working_dir": "/test/dir"
+  }
+}

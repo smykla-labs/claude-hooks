@@ -1,0 +1,53 @@
+# Test: Debug crash list with existing dumps
+# This tests listing crash dumps when they exist
+
+mkdir -p .klaudiush/crash_dumps
+
+# Create test crash dumps
+cp crash1.json .klaudiush/crash_dumps/crash-20250101T120000-test1.json
+cp crash2.json .klaudiush/crash_dumps/crash-20250101T120001-test2.json
+
+exec klaudiush debug crash list
+stdout 'Crash Dumps'
+stdout '==========='
+stdout 'Total: 2'
+stdout 'crash-20250101T120000-test1'
+stdout 'crash-20250101T120001-test2'
+stdout 'klaudiush debug crash view <id>'
+stdout 'klaudiush debug crash clean'
+
+-- crash1.json --
+{
+  "id": "crash-20250101T120000-test1",
+  "timestamp": "2025-01-01T12:00:00Z",
+  "panic_value": "test panic 1",
+  "stack_trace": "test stack",
+  "runtime": {
+    "goos": "darwin",
+    "goarch": "arm64",
+    "go_version": "go1.23.0",
+    "num_goroutine": 1,
+    "num_cpu": 8
+  },
+  "metadata": {
+    "version": "v1.0.0"
+  }
+}
+
+-- crash2.json --
+{
+  "id": "crash-20250101T120001-test2",
+  "timestamp": "2025-01-01T12:00:01Z",
+  "panic_value": "test panic 2",
+  "stack_trace": "test stack",
+  "runtime": {
+    "goos": "darwin",
+    "goarch": "arm64",
+    "go_version": "go1.23.0",
+    "num_goroutine": 1,
+    "num_cpu": 8
+  },
+  "metadata": {
+    "version": "v1.0.0"
+  }
+}

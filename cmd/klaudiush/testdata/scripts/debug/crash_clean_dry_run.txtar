@@ -1,0 +1,64 @@
+# Test: Debug crash clean with dry-run flag
+# This tests that dry-run shows what would be removed without deleting
+
+mkdir -p .klaudiush/crash_dumps
+
+# Create test crash dumps with different timestamps
+cp crash_old.json .klaudiush/crash_dumps/crash-20240101T120000-old.json
+cp crash_recent.json .klaudiush/crash_dumps/crash-20250101T120000-recent.json
+
+# Set config with short retention
+mkdir -p .klaudiush
+cp config.toml .klaudiush/config.toml
+
+# Dry run should show what would be removed
+exec klaudiush debug crash clean --dry-run
+stdout 'Crash Dumps Cleanup \(Dry Run\)'
+stdout 'Retention:'
+stdout 'Run without --dry-run to actually remove these dumps'
+
+# Verify files still exist after dry run
+exists .klaudiush/crash_dumps/crash-20240101T120000-old.json
+exists .klaudiush/crash_dumps/crash-20250101T120000-recent.json
+
+-- config.toml --
+[crash_dump]
+enabled = true
+max_dumps = 10
+max_age_days = 30
+
+-- crash_old.json --
+{
+  "id": "crash-20240101T120000-old",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "panic_value": "old panic",
+  "stack_trace": "test",
+  "runtime": {
+    "goos": "darwin",
+    "goarch": "arm64",
+    "go_version": "go1.23.0",
+    "num_goroutine": 1,
+    "num_cpu": 8
+  },
+  "metadata": {
+    "version": "v1.0.0"
+  }
+}
+
+-- crash_recent.json --
+{
+  "id": "crash-20250101T120000-recent",
+  "timestamp": "2025-01-01T12:00:00Z",
+  "panic_value": "recent panic",
+  "stack_trace": "test",
+  "runtime": {
+    "goos": "darwin",
+    "goarch": "arm64",
+    "go_version": "go1.23.0",
+    "num_goroutine": 1,
+    "num_cpu": 8
+  },
+  "metadata": {
+    "version": "v1.0.0"
+  }
+}
