@@ -61,6 +61,11 @@ const (
 	defaultExceptionAuditMaxAgeDays = 30
 	defaultExceptionAuditMaxBackups = 3
 	defaultExceptionMinReasonLength = 10
+
+	// Session defaults.
+	defaultSessionStateFile  = "~/.klaudiush/session_state.json"
+	defaultSessionMaxAgeStr  = "24h"
+	defaultSessionMaxAgeDays = 1
 )
 
 // defaultValidTypes is the list of valid commit types.
@@ -504,6 +509,7 @@ func defaultsToMap() map[string]any {
 		"validators": defaultValidatorsMap(),
 		"rules":      defaultRulesMap(),
 		"exceptions": defaultExceptionsMap(),
+		"session":    defaultSessionMap(),
 	}
 }
 
@@ -533,6 +539,14 @@ func defaultExceptionsMap() map[string]any {
 			"max_age_days": defaultExceptionAuditMaxAgeDays,
 			"max_backups":  defaultExceptionAuditMaxBackups,
 		},
+	}
+}
+
+func defaultSessionMap() map[string]any {
+	return map[string]any{
+		"enabled":         true,
+		"state_file":      defaultSessionStateFile,
+		"max_session_age": defaultSessionMaxAgeStr,
 	}
 }
 

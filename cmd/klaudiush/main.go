@@ -15,6 +15,7 @@ import (
 	"github.com/smykla-labs/klaudiush/internal/config/factory"
 	"github.com/smykla-labs/klaudiush/internal/dispatcher"
 	"github.com/smykla-labs/klaudiush/internal/parser"
+	"github.com/smykla-labs/klaudiush/internal/session"
 	"github.com/smykla-labs/klaudiush/pkg/config"
 	"github.com/smykla-labs/klaudiush/pkg/hook"
 	"github.com/smykla-labs/klaudiush/pkg/logger"
@@ -151,8 +152,29 @@ func run(_ *cobra.Command, _ []string) error {
 	registryBuilder := factory.NewRegistryBuilder(log)
 	registry := registryBuilder.Build(cfg)
 
-	// Create dispatcher
-	disp := dispatcher.NewDispatcher(registry, log)
+	// Create session tracker if enabled
+	var sessionTracker *session.Tracker
+
+	sessionCfg := cfg.GetSession()
+	if sessionCfg.IsEnabled() {
+		sessionTracker = session.NewTracker(
+			sessionCfg,
+			session.WithLogger(log),
+		)
+
+		log.Debug("session tracker initialized",
+			"state_file", sessionCfg.GetStateFile(),
+			"max_session_age", sessionCfg.GetMaxSessionAge(),
+		)
+	}
+
+	// Create dispatcher with session tracker
+	disp := dispatcher.NewDispatcherWithOptions(
+		registry,
+		log,
+		dispatcher.NewSequentialExecutor(log),
+		dispatcher.WithSessionTracker(sessionTracker),
+	)
 
 	// Dispatch validation
 	errs := disp.Dispatch(context.Background(), ctx)
