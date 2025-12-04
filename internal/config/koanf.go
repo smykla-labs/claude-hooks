@@ -543,7 +543,7 @@ func defaultExceptionsMap() map[string]any {
 
 func defaultSessionMap() map[string]any {
 	return map[string]any{
-		"enabled":         true,
+		"enabled":         false,
 		"state_file":      defaultSessionStateFile,
 		"max_session_age": defaultSessionMaxAgeStr,
 	}

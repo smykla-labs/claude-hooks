@@ -28,7 +28,7 @@ const (
 // blocking error occurs in the same Claude Code session.
 type SessionConfig struct {
 	// Enabled controls whether session tracking is active.
-	// Default: true
+	// Default: false
 	Enabled *bool `json:"enabled,omitempty" koanf:"enabled" toml:"enabled"`
 
 	// StateFile is the path to the session state file.
@@ -67,10 +67,10 @@ type SessionAuditConfig struct {
 }
 
 // IsEnabled returns true if session tracking is enabled.
-// Returns true if Enabled is nil (default behavior).
+// Returns false if Enabled is nil (default behavior).
 func (s *SessionConfig) IsEnabled() bool {
 	if s == nil || s.Enabled == nil {
-		return true
+		return false
 	}
 
 	return *s.Enabled

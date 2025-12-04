@@ -594,14 +594,19 @@ var _ = Describe("Tracker", func() {
 	})
 
 	Describe("IsEnabled", func() {
-		It("returns true with nil config", func() {
-			tracker = session.NewTracker(nil)
-			Expect(tracker.IsEnabled()).To(BeTrue())
+		It("returns false with nil tracker", func() {
+			var nilTracker *session.Tracker
+			Expect(nilTracker.IsEnabled()).To(BeFalse())
 		})
 
-		It("returns true with nil enabled", func() {
+		It("returns false with nil config", func() {
+			tracker = session.NewTracker(nil)
+			Expect(tracker.IsEnabled()).To(BeFalse())
+		})
+
+		It("returns false with nil enabled", func() {
 			tracker = session.NewTracker(&config.SessionConfig{})
-			Expect(tracker.IsEnabled()).To(BeTrue())
+			Expect(tracker.IsEnabled()).To(BeFalse())
 		})
 
 		It("returns false when disabled", func() {

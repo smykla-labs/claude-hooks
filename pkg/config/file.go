@@ -30,7 +30,7 @@ type FileConfig struct {
 
 // MarkdownValidatorConfig configures the Markdown file validator.
 type MarkdownValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// Timeout is the maximum time allowed for markdown linting operations.
 	// Default: "10s"
@@ -90,7 +90,7 @@ type MarkdownValidatorConfig struct {
 
 // ShellScriptValidatorConfig configures the shell script validator.
 type ShellScriptValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// Timeout is the maximum time allowed for shellcheck operations.
 	// Default: "10s"
@@ -120,7 +120,7 @@ type ShellScriptValidatorConfig struct {
 
 // TerraformValidatorConfig configures the Terraform/OpenTofu validator.
 type TerraformValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// Timeout is the maximum time allowed for terraform/tofu operations.
 	// Default: "10s"
@@ -158,7 +158,7 @@ type TerraformValidatorConfig struct {
 
 // WorkflowValidatorConfig configures the GitHub Actions workflow validator.
 type WorkflowValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// Timeout is the maximum time allowed for actionlint operations.
 	// Default: "10s"
@@ -192,7 +192,7 @@ type WorkflowValidatorConfig struct {
 
 // GofumptValidatorConfig configures the Go code formatter validator.
 type GofumptValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// Timeout is the maximum time allowed for gofumpt operations.
 	// Default: "10s"
@@ -219,7 +219,7 @@ type GofumptValidatorConfig struct {
 
 // PythonValidatorConfig configures the Python file validator.
 type PythonValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// Timeout is the maximum time allowed for ruff operations.
 	// Default: "10s"
@@ -248,7 +248,7 @@ type PythonValidatorConfig struct {
 
 // JavaScriptValidatorConfig configures the JavaScript/TypeScript file validator.
 type JavaScriptValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// Timeout is the maximum time allowed for oxlint operations.
 	// Default: "10s"
@@ -277,7 +277,7 @@ type JavaScriptValidatorConfig struct {
 
 // RustValidatorConfig configures the Rust file validator.
 type RustValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// Timeout is the maximum time allowed for rustfmt operations.
 	// Default: "10s"

@@ -9,7 +9,7 @@ type GitHubConfig struct {
 
 // IssueValidatorConfig configures the gh issue create validator.
 type IssueValidatorConfig struct {
-	ValidatorConfig
+	ValidatorConfig `koanf:",squash"`
 
 	// RequireBody requires issue body to be present.
 	// Default: false (body is optional for issues)
