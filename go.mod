@@ -12,7 +12,6 @@ require (
 	github.com/go-git/go-git/v6 v6.0.0-20251204115828-b5fe4178875e
 	github.com/go-viper/mapstructure/v2 v2.4.0
 	github.com/google/go-github/v80 v80.0.0
-	github.com/google/go-github/v80 v80.0.0
 	github.com/hako/durafmt v0.0.0-20210608085754-5c1018a4e16b
 	github.com/knadh/koanf/parsers/toml/v2 v2.2.0
 	github.com/knadh/koanf/providers/confmap v1.0.0
